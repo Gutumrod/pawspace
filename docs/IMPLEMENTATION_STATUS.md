@@ -1,10 +1,10 @@
 # 📊 PawSpace — Current Implementation Status & Codebase Reality
 
-> **Last Verified:** 2026-08-20 (Phase 1 + Phase 2 + Phase 3 SQL suites executed for real by Claude against a local Supabase/Postgres instance — not a static review. Phase 3 findings from an independent reviewer (ChatGPT Gate 1) were each confirmed by direct code inspection before being fixed by Claude, not accepted on the report alone.)
+> **Last Verified:** 2026-08-20 (Phase 1-4 SQL/service suites executed for real by Claude against a local Supabase/Postgres instance — not a static review. Phase 3 findings from an independent reviewer (ChatGPT Gate 1) were each confirmed by direct code inspection before being fixed by Claude, not accepted on the report alone. Phase 4's report was independently re-run by Claude before commit and matched exactly - no discrepancies found.)
 > **Repository:** `Gutumrod/pawspace`
 > **Branch:** `master`
-> **Current Stage:** Phase 1 + Phase 2 + Phase 3 database/RPC/RLS/auth layer implemented and SQL-executable-test-verified. Server-action layer (`lib/auth.ts`, `app/actions/*`) fixed and typecheck/lint/build-verified, but has no automated end-to-end test — see gap noted below. Application UI layer still preview/stub.
-> **Architecture Review Gate:** **PHASE 1-3 DATABASE LAYER VERIFIED — SERVER-ACTION TEST COVERAGE GAP OPEN — UI INTEGRATION NEXT**
+> **Current Stage:** Phase 1-4 database/RPC/RLS/auth/booking-service layer implemented and executable-test-verified. Server-action layer for auth/staff management (`lib/auth.ts`, `app/actions/staff.ts`) fixed and typecheck/lint/build-verified but has no automated end-to-end test - see gap noted below (tracked as issue #3). Application UI layer still preview/stub; no live LINE/Google Sheets transport yet (Phase 5-6).
+> **Architecture Review Gate:** **PHASE 1-4 BACKEND LAYER VERIFIED — SERVER-ACTION E2E TEST COVERAGE GAP OPEN (issue #3) — LINE CLAIM (PHASE 5) NEXT**
 
 ---
 
@@ -34,6 +34,9 @@
 | Daily Report vs Checkout Race | `VERIFIED` | รัน checkout (`update_booking_status → checked_out`) แข่งกับ `create_daily_report` จริงผ่าน `FOR UPDATE` + `pg_sleep`: checkout ชนะจริง, report ที่ตามหลังถูก reject จริงด้วย "Booking is currently checked_out", ไม่มี stale report ถูก commit |
 | Booking Gateways (`create_booking`, schedule/status RPCs) | `VERIFIED` | ครอบคลุมโดย `phase2_rpc_rls.sql` ด้านบน |
 | Pet Assignment Concurrency (`add_pet_to_booking`, `remove_pet_from_booking`) | `VERIFIED` | ครอบคลุมโดย same-pet concurrency test ด้านบน |
+| Phase 4 Booking Backend Service (`lib/booking-service.ts`) | `VERIFIED` | RPC-only wrapper (create/reschedule/status/pet-add-remove/room-maintenance/mark-clean) with application-boundary UUID/date/amount validation, no generic DML. No new migration - reuses Phase 2 RPCs directly (Module Hub checked: `NOT NEEDED`, confirmed by Claude - no booking/room module exists in `modules-hub/modules/`) |
+| Phase 4 Booking Server Actions (`app/actions/booking.ts`) | `VERIFIED` | Every action routed through `requireTenantContext()`; `setRoomMaintenanceAction` has an explicit Manager/Owner-only defense-in-depth check in addition to the Phase 2 RPC's own authority check |
+| Phase 4 Booking Backend Tests (`tests/phase4_booking_backend.test.ts`) | `VERIFIED` | 21/21 pass, independently re-run by Claude via `npx tsx` against a fresh local stack (Phase 1-3 migrations applied, no new migration for Phase 4): malformed-input rejection, cross-tenant rejection, create/reschedule/cancel, same-pet overlap rejection, remove/re-add pet, checked-in-blocks-removal-and-cancel, check-in on Asia/Bangkok business date, staff cannot set maintenance, checkout→cleaning, maintenance cannot bypass cleaning gate, cleaning→available, double mark-clean rejected, maintenance after cleaning, mark-clean cannot bypass maintenance, clear maintenance - exact match with the implementer's reported results, no discrepancies |
 | Room Gateways (`create_room`, config, maintenance, mark-clean) | `SCHEMA IMPLEMENTED` | มีใน migration และผ่าน static/lint แล้ว แต่ยังไม่มี negative test เจาะจงแยกสำหรับ maintenance-window edge case ในชุดที่รันจริงรอบนี้ |
 | Business Date Semantics (`pawspace_business_date()`) | `VERIFIED` | ใช้จริงในทุก RPC ที่ทดสอบด้านบน (check-in date gate, maintenance state, report_date default) ผ่านจริงในทุก test |
 | Daily Report Gateway (`create_daily_report`, delivery tracking) | `VERIFIED` (create + idempotency + checkout-race) | worker lease/retry (`retry_daily_report_delivery`, stale `sending` recovery) ยังไม่มี test แยกในรอบนี้ — ยังเป็น `DOCUMENTED` เฉพาะส่วนนั้น |
