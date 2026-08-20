@@ -36,13 +36,15 @@ CREATE TEMP TABLE phase2_ids(k text PRIMARY KEY, v uuid NOT NULL);
 GRANT SELECT, INSERT ON phase2_ids TO authenticated;
 DO $$
 DECLARE s1 uuid:=gen_random_uuid(); s2 uuid:=gen_random_uuid();
-  u1 uuid:=gen_random_uuid(); u2 uuid:=gen_random_uuid(); o1 uuid:=gen_random_uuid(); o2 uuid:=gen_random_uuid();
+  u1 uuid:=gen_random_uuid(); u1_co uuid:=gen_random_uuid(); u2 uuid:=gen_random_uuid(); o1 uuid:=gen_random_uuid(); o2 uuid:=gen_random_uuid();
   p1 uuid:=gen_random_uuid(); p2 uuid:=gen_random_uuid(); p3 uuid:=gen_random_uuid(); p4 uuid:=gen_random_uuid(); o3 uuid:=gen_random_uuid(); r1 uuid:=gen_random_uuid(); r2 uuid:=gen_random_uuid();
 BEGIN
-  INSERT INTO auth.users(id,email) VALUES (u1,'phase2-owner-1@example.invalid'),(u2,'phase2-owner-2@example.invalid');
+  INSERT INTO auth.users(id,email) VALUES (u1,'phase2-owner-1@example.invalid'),(u1_co,'phase2-owner-1co@example.invalid'),(u2,'phase2-owner-2@example.invalid');
   INSERT INTO shops(id,name,slug) VALUES (s1,'P2 Shop 1','p2-shop-1'),(s2,'P2 Shop 2','p2-shop-2');
   INSERT INTO staff_users(id,shop_id,email,name,role,is_active) VALUES
-    (u1,s1,'phase2-owner-1@example.invalid','Owner 1','owner',true),(u2,s2,'phase2-owner-2@example.invalid','Owner 2','owner',true);
+    (u1,s1,'phase2-owner-1@example.invalid','Owner 1','owner',true),
+    (u1_co,s1,'phase2-owner-1co@example.invalid','Owner 1 Co','owner',true),
+    (u2,s2,'phase2-owner-2@example.invalid','Owner 2','owner',true);
   INSERT INTO pet_owners(id,shop_id,first_name,phone) VALUES (o1,s1,'Owner A','0810000001'),(o2,s2,'Owner B','0810000002'),(o3,s1,'Owner C','0810000003');
   INSERT INTO pets(id,shop_id,owner_id,name,species) VALUES (p1,s1,o1,'Milo','dog'),(p2,s2,o2,'Luna','cat'),(p3,s1,o3,'Coco','dog'),(p4,s1,o1,'Mochi','cat');
   INSERT INTO rooms(id,shop_id,room_number,room_type,capacity_pets,base_price_per_night) VALUES

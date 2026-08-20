@@ -1,10 +1,10 @@
 # 📊 PawSpace — Current Implementation Status & Codebase Reality
 
-> **Last Verified:** 2026-08-20 (Phase 1 + Phase 2 gateway/RLS/concurrency suites executed for real by Claude against a local Supabase/Postgres instance — not a static review)
+> **Last Verified:** 2026-08-20 (Phase 1 + Phase 2 + Phase 3 SQL suites executed for real by Claude against a local Supabase/Postgres instance — not a static review. Phase 3 findings from an independent reviewer (ChatGPT Gate 1) were each confirmed by direct code inspection before being fixed by Claude, not accepted on the report alone.)
 > **Repository:** `Gutumrod/pawspace`
 > **Branch:** `master`
-> **Current Stage:** Phase 1 + Phase 2 schema/RPC/RLS layer implemented and executable-test-verified. Application layer (UI wiring, live integrations) still preview/stub.
-> **Architecture Review Gate:** **PHASE 1 + PHASE 2 DATABASE LAYER VERIFIED — APPLICATION INTEGRATION NEXT**
+> **Current Stage:** Phase 1 + Phase 2 + Phase 3 database/RPC/RLS/auth layer implemented and SQL-executable-test-verified. Server-action layer (`lib/auth.ts`, `app/actions/*`) fixed and typecheck/lint/build-verified, but has no automated end-to-end test — see gap noted below. Application UI layer still preview/stub.
+> **Architecture Review Gate:** **PHASE 1-3 DATABASE LAYER VERIFIED — SERVER-ACTION TEST COVERAGE GAP OPEN — UI INTEGRATION NEXT**
 
 ---
 
@@ -44,6 +44,18 @@
 | RLS + Table Privilege Lockdown | `VERIFIED` | ยืนยันจริงจาก `phase2_rpc_rls.sql`: ไม่มี DML grant หลุด, disabled staff เสีย visibility จริง |
 | LINE Flex Message Adapter | `ADAPTER/STUB` | `lib/integrations.ts::sendDailyReport()` ปฏิเสธการยิงจริงเสมอ แม้ config ครบ |
 | Google Sheets Adapter | `ADAPTER/STUB` | `lib/integrations.ts::enqueueSheetSync()` ปฏิเสธการยิงจริงเสมอ แม้ config ครบ |
+| Phase 3 Auth/Tenant DB Schema (`enforce_last_active_owner`, `get_current_staff_context`, `bootstrap_shop`, `create_staff_membership`, `disable/enable_staff`, `change_staff_role`, `remove_staff`) | `VERIFIED` | `supabase/migrations/20260820030000_phase3_auth_tenant.sql` applies cleanly on top of Phase 1+2. `supabase/tests/phase3_auth_tenant.sql` runs clean (exit 0). `tests/phase3_server_layer.test.ts` (33 assertions via `npx tsx`, real Supabase Auth + RPC calls) all pass, re-run by Claude independently after removing its hard-coded credential fallback |
+| Last-Active-Owner Invariant Concurrency | `VERIFIED` | Claude built and ran an independent repro (not the same script as the 33-test suite): 2 real owners, 2 concurrent DB sessions each self-disabling — exactly one succeeds, the other rejected with `Last Active Owner Invariant Violation`, final active-owner count confirmed as 1 |
+| App Login Rejects Inactive/Unaffiliated Staff | `SCHEMA+CODE FIXED, NOT TEST-VERIFIED` | Was broken: `lib/auth.ts::loginWithPassword` returned `success: true` and set session cookies even when `getStaffContext()` resolved `null` (no membership or inactive), and `app/login/page.tsx` only checked `res.success`. Fixed: cookies are now set only after confirming an active staff context; on rejection the just-created Supabase Auth session is signed out server-side. Verified by code re-read + `tsc`/`build` pass. **Not covered by an executable test** — see gap below |
+| Staff Removal Auth Cleanup | `SCHEMA+CODE FIXED, NOT TEST-VERIFIED` | Was broken: `removeStaffAction` only called the `remove_staff` DB RPC, never touched Supabase Auth, leaving the Auth account active after membership removal. Fixed: added a best-effort, logged `admin.auth.admin.deleteUser()` call after the RPC succeeds (DB removal remains authoritative; Auth cleanup failure is logged, not silently swallowed, and does not re-grant access). Verified by code re-read + `tsc`/`build` pass. **Not covered by an executable test** |
+| Staff Invite Usable Credential | `SCHEMA+CODE FIXED, NOT TEST-VERIFIED` | Was broken: `inviteStaffAction` generated a `Math.random()` password that was never delivered anywhere when no password was supplied — membership created, no usable login path. Fixed: no-password path now calls `admin.auth.admin.inviteUserByEmail()` (real Supabase invite email via local Inbucket), with a `resetPasswordForEmail()` fallback for an already-existing account. Verified by code re-read + `tsc`/`build` pass. **Not covered by an executable test** |
+| Test-source hard-coded credentials | `FIXED, VERIFIED` | `tests/phase3_server_layer.test.ts` no longer has literal fallback anon/service-role keys — now throws a clear error if `NEXT_PUBLIC_SUPABASE_ANON_KEY` / `SUPABASE_SERVICE_ROLE_KEY` aren't set. Re-ran the full 33-test suite with real env vars after the change: still 33/33 |
+
+---
+
+## Known gap: no executable test for the fixed server actions
+
+`lib/auth.ts::loginWithPassword`, `app/actions/staff.ts::removeStaffAction`, and `app/actions/staff.ts::inviteStaffAction` were fixed by direct code correction after Gate 1 (ChatGPT) found real bugs in them, each independently confirmed by Claude reading the actual source. All three now typecheck, lint, and build clean. **None of the three has an automated test exercising them as real functions** — the existing 33-test suite only calls Supabase RPCs directly, and Claude confirmed by direct probe that `next/headers`' `cookies()` cannot be invoked outside an actual Next.js request/build runtime (`Cannot find module '.../node_modules/next/headers'` when resolved via plain Node/tsx), so covering these specific functions requires either a real running Next.js server hit over HTTP or a `next/headers` mock — both meaningfully bigger than the bug fixes themselves. This is a real, acknowledged gap, not a claimed pass — do not mark these `VERIFIED` until that test exists and actually runs.
 
 ---
 
