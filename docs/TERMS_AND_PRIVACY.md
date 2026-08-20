@@ -1,6 +1,6 @@
 # ⚖️ PawSpace — Draft Terms of Service & Privacy Framework
 
-> **⚠️ DOCUMENT STATUS:** `[DRAFT — For Review & Commercial Planning Only / Not for Production Deployment]`  
+> **⚠️ DOCUMENT STATUS:** `[DRAFT — For Review & Commercial Planning Only / Not for Production Deployment]`
 > **วัตถุประสงค์:** ร่างกรอบข้อตกลงการให้บริการและแนวทางปฏิบัติด้านความเป็นส่วนตัวเบื้องต้นสำหรับโครงการ PawSpace ก่อนเข้าสู่กระบวนการตรวจทานทางกฎหมายและสัญญาผู้ให้บริการช่วง (Vendor DPA) เต็มรูปแบบ
 
 ---
@@ -20,7 +20,7 @@
 2. **นโยบายไม่แสวงหาประโยชน์จากข้อมูล (Zero Data Selling):** ผู้ให้บริการจะไม่นำข้อมูลลูกค้าของร้านค้าไปจำหน่าย, เผยแพร่แก่บุคคลภายนอกที่ไม่เกี่ยวข้อง, หรือใช้เพื่อประโยชน์ทางการตลาดอื่นใดโดยเด็ดขาด
 3. **Google Sheets Sync (Customer & Booking Data Export Replica):**
    * ฟังก์ชันการซิงก์ Google Sheets ทำหน้าที่เป็น **"สำเนาส่งออกข้อมูลลูกค้าและรายการจอง (Data Export Replica)"** ลงในบัญชี Google Workspace ของร้านค้า
-   * *ขอบเขต:* สำเนาดังกล่าวครอบคลุมเฉพาะข้อมูลตารางลูกค้าและรายการจอง ไม่ครอบคลุมไฟล์รูปภาพใน Storage, ข้อมูล Daily Reports เชิงลึก, หรือโครงสร้างสิทธิ์ผู้ใช้งาน
+   * *ขอบเขต:* สำเนาดังกล่าวครอบคลุมเฉพาะข้อมูลตารางลูกค้าและรายการจองแบบ Pet-Centric ไม่ครอบคลุมไฟล์รูปภาพใน Storage, ข้อมูล Daily Reports เชิงลึก, หรือโครงสร้างสิทธิ์ผู้ใช้งาน
 
 ---
 
@@ -31,22 +31,24 @@
 | ผู้ให้บริการช่วง (Subprocessor) | วัตถุประสงค์การใช้งาน | สถานที่ตั้งเซิร์ฟเวอร์ / การถ่ายโอนข้อมูล |
 | :--- | :--- | :--- |
 | **Supabase Inc.** | จัดการฐานข้อมูลหลัก (PostgreSQL), Auth และ Storage เก็บรูปภาพ | Cloud Infrastructure (AWS Singapore / Global) |
-| **Vercel Inc.** | โฮสติ้งเว็บแอปพลิเคชันและ API Serverless | Global Edge Network |
+| **Vercel Inc.** | โฮสติ้งเว็บแอปพลิเคชันและ API Serverless (Next.js 16.x) | Global Edge Network |
 | **LINE Corporation** | ส่งข้อความแจ้งเตือน Daily Report ผ่าน Messaging API / LIFF | ญี่ปุ่น / ภูมิภาคเอเชีย |
 | **Google LLC** | ซิงก์ข้อมูลลง Google Sheets ตามคำสั่งของร้านค้า | Global Cloud Infrastructure |
 
 ---
 
-## 4. ความปลอดภัย การสำรองข้อมูล และระดับการให้บริการ (Security & Infrastructure Reality)
+## 4. ความปลอดภัย การจัดเก็บไฟล์สื่อ และการสำรองข้อมูล (Security & Media Storage)
 
 1. **การรักษาความปลอดภัยของข้อมูล:**
    * การส่งผ่านข้อมูลกระทำผ่านโปรโตคอล HTTPS / TLS มาตรฐาน
    * รหัสลับและโทเค็น API ของแต่ละร้านค้า (เช่น LINE Channel Access Token) ถูกจัดเก็บแบบ Encrypted ผ่าน **Supabase Vault**
-   * ข้อมูลระหว่างร้านค้าถูกแยกขาดจากกันด้วย Supabase Row-Level Security (RLS) และ Private Storage Bucket Policy
-2. **การสำรองข้อมูล (Data Backup Scope):**
+   * ข้อมูลตารางระหว่างร้านค้าถูกแยกขาดจากกันด้วย Supabase Row-Level Security (RLS 2-Tier)
+2. **การแยกประเภทพื้นที่จัดเก็บไฟล์สื่อ (Media Storage Architecture):**
+   * **รูปถ่าย Daily Report:** จัดเก็บใน Bucket `daily-report-photos` (Public CDN Read with Secure Cryptographic UUID Paths) เพื่อให้รูปภาพในการ์ด LINE Flex Message แสดงผลแก่ลูกค้าได้อย่างต่อเนื่องโดยไม่หมดอายุ
+   * **เอกสารสำคัญของระบบ:** เอกสารภายในอื่นๆ (ถ้ามี) จะถูกจัดเก็บใน Private Storage Bucket ที่ควบคุมสิทธิ์ด้วย RLS
+3. **การสำรองข้อมูล (Data Backup Scope):**
    * *ฐานข้อมูล (Database):* ในระดับ Production แผนการสำรองข้อมูลอัตโนมัติรายวัน (Automated Daily Backup) จะขึ้นอยู่กับ SLA ของ Supabase Pro Plan
    * *ไฟล์สื่อ (Media Storage):* ไฟล์รูปภาพถูกจัดเก็บใน Supabase Storage ซึ่งแยกจาก Database Backup
-3. **เป้าหมายความพร้อมใช้งาน (Uptime Objective):** มุ่งเน้นเป้าหมายความพร้อมใช้งานที่ 99.5% (ไม่นับรวมช่วงบำรุงรักษาตามกำหนดการ หรือเหตุขัดข้องจาก Subprocessors)
 
 ---
 

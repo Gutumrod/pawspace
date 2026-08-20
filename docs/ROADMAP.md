@@ -1,42 +1,7 @@
 # 🗺️ PawSpace — Product Roadmap & Execution Milestones
 
-> **Document Status:** Locked & Aligned with Lean PRD  
-> **Execution Strategy:** Build Core Loop First ➔ Validate with Pilot Stores ➔ Monetize ➔ Expand
-
----
-
-## 🚧 Implementation Checkpoint — 2026-08-20
-
-Phase 1 เริ่ม implementation แล้ว โดยรอบ foundation ปัจจุบันขึ้นโครง application, UI และ database schema สำคัญเรียบร้อย
-
-### Foundation ที่ขึ้นโค้ดแล้ว
-
-- Next.js application baseline
-- Operations Dashboard preview
-- Room Matrix preview
-- Upcoming Check-ins / Activity / KPI UI
-- Daily Care Report Drawer preview
-- Supabase initial schema
-- tenant/RLS foundation
-- booking GiST exclusion constraint
-- multi-pet capacity RPC foundation
-- atomic LIFF claim RPC foundation
-- Daily Report schema
-- Google sync mapping + retry/outbox schema
-- LINE/Google integration adapter boundaries
-
-### Phase 1 ที่ยังต้องทำให้ Functional ก่อน Closed Beta
-
-- live Supabase Auth + staff/shop context
-- database-backed Room/Owner/Pet/Booking CRUD
-- live check-in/check-out and room status flow
-- Daily Report persistence + Storage upload
-- live LINE Messaging API transport
-- live Google Sheets sync worker/transport
-- RLS/concurrency/end-to-end verification
-- automated tests + typecheck + CI quality gate
-
-รายละเอียดสถานะราย capability ดูที่ [`IMPLEMENTATION_STATUS.md`](./IMPLEMENTATION_STATUS.md)
+> **Document Status:** Locked & Harmonized with PRD Invariants
+> **Execution Strategy:** Build Core Loop First ➔ Validate with Pilot Stores ➔ Monetize & Gate ➔ Expand
 
 ---
 
@@ -53,29 +18,28 @@ Phase 1 เริ่ม implementation แล้ว โดยรอบ foundatio
 ## 📅 รายละเอียดการดำเนินงานรายเฟส
 
 ### 🚀 Phase 1: Lean MVP (สัปดาห์ที่ 1–2) — *Focus: The Core Daily Loop*
-* **สถานะ:** **IN PROGRESS — Foundation implemented; functional integration pending**
-* **เป้าหมาย:** สร้างระบบพื้นฐานที่ตอบโจทย์ The Core Daily Loop ให้สมบูรณ์และเสถียรที่สุด
+* **เป้าหมาย:** สร้างระบบพื้นฐานที่ตอบโจทย์ The Core Daily Loop ตามสัญญา Product Decisions 10 ข้ออย่างเคร่งครัด
 * **สิ่งที่ส่งมอบ (Deliverables):**
-  1. **Shop Setup & Staff Auth (P0-A):**
-     * Supabase Auth mapping กับ `staff_users` + Row-Level Security (RLS) ครบทุกตาราง
-     * ตั้งค่าประเภทห้อง, ความจุ (`capacity_pets`), และราคา
-  2. **Room Matrix & Multi-Pet Booking (P0-A):**
-     * ผังห้องพักแสดงสถานะ (Available, Occupied, Cleaning)
-     * ระบบจองพร้อม PostgreSQL GiST Exclusion Constraint ป้องกันห้องชนที่ระดับฐานข้อมูล
-     * บันทึกสัตว์เลี้ยงหลายตัวต่อ 1 Booking พร้อม Concurrency-Safe RPC (`add_pet_to_booking`) คุมความจุห้อง
-     * Verified LIFF Claim Flow สำหรับผูก LINE Account
-  3. **1-Click Daily Care Report via LINE (P0-B):**
-     * หน้าจอพี่เลี้ยง: อัปโหลดรูป 1–4 รูป (`cardinality BETWEEN 1 AND 4` ใน DB) + ติ๊กสถานะ อาหาร (4 ระดับ)/ขับถ่าย/อารมณ์ + Note
-     * รูปจัดเก็บใน Storage Bucket `daily-report-photos` (Public CDN Read with Secure Unpredictable UUIDs)
-     * ยิงการ์ด LINE Flex Message เข้าแชทเจ้าของสัตว์ทันที (แสดงผลถาวรไม่หมดอายุ)
-  4. **Idempotent Google Sheets Sync (P0-C):**
-     * ซิงก์สำเนาข้อมูลลูกค้าและรายการจองลง Sheet ของร้านค้าโดยใช้ `Record_ID` Key Lookup (แก้ปัญหาแถวเลื่อน)
+  1. **Shop Setup & Staff Auth (Decision 7A & 8A):**
+     * Supabase Auth Email/Password + Lean 2-Tier RLS Matrix (`owner/manager` vs `staff`)
+     * ตั้งค่าประเภทห้อง, ความจุ (`capacity_pets`), ราคา, และช่วงปิดปรับปรุง (`maintenance_from/until`)
+  2. **Room Matrix & Strict Booking Engine (Decision 1A, 2A, 3A, 4A):**
+     * ผังห้องพักแสดงสถานะ (Available, Occupied, Cleaning, Maintenance)
+     * ระบบจองพร้อม PostgreSQL GiST Exclusion Constraint ป้องกันห้องชน
+     * RPC `add_pet_to_booking` บังคับ Invariants: เจ้าของเดียวกัน (1A), สัตว์เลี้ยงไม่จองซ้อน (2A), ไม่ทับช่วง Maintenance (4A), และคุมความจุห้องด้วย Row Lock
+     * State Machine สำหรับการเช็คอิน/เช็คเอาท์/ยกเลิก (3A)
+     * Verified LIFF Claim Flow ผูก LINE (TTL 48h + Re-link) (6A)
+  3. **1-Click Daily Care Report via LINE (Decision 5A):**
+     * พี่เลี้ยงอัปโหลดรูป 1–4 รูป (`cardinality BETWEEN 1 AND 4`) + ติ๊กสถานะ อาหาร (4 ระดับ)/ขับถ่าย/อารมณ์ + Note
+     * รองรับการส่งหลายครั้งต่อวัน พร้อมระบบป้องกันการกดซ้ำ (`idempotency_key`)
+     * จัดเก็บรูปใน Storage Bucket `daily-report-photos` (Public CDN Read) แสดงผลในการ์ด LINE Flex Message ได้ตลอดอายุการใช้งานตาม Retention Policy (พร้อม Dual Idempotency & X-Line-Retry-Key)
+  4. **Pet-Centric Google Sheets Sync (Decision 9A):**
+     * ซิงก์สำเนา One-way Replica ลง Google Sheets ของร้านค้าโดยใช้ `Record_ID = pet_id` ใน Column A
      * มีตาราง `sync_queue` สำรองข้อมูลกรณี API ขัดข้อง
 
 ---
 
 ### 🧪 Phase 2: Closed Beta & Real-World Validation (สัปดาห์ที่ 3)
-* **สถานะ:** **NOT STARTED — Blocked by functional Phase 1 completion**
 * **เป้าหมาย:** นำระบบไปให้โรงแรมสัตว์เลี้ยงจริง 5–10 ร้านทดลองใช้งานเพื่อเก็บ Feedback
 * **สิ่งที่ส่งมอบ (Deliverables):**
   1. **Direct Outreach:** ทักหาโรงแรมหมาแมว 30 ร้านใน กทม./ปริมณฑล มอบสิทธิ์ทดลองใช้ฟรี 30 วัน พร้อมฟรีบริการช่วยจัดผังห้องและนำเข้าข้อมูลเดิม
@@ -86,20 +50,19 @@ Phase 1 เริ่ม implementation แล้ว โดยรอบ foundatio
 ---
 
 ### 💰 Phase 3: Commercial Launch & Monetization (สัปดาห์ที่ 4)
-* **สถานะ:** **NOT STARTED**
-* **เป้าหมาย:** เปลี่ยนร้านค้าทดลองให้เป็นลูกค้าจ่ายเงินจริง (First Paying Customers)
+* **เป้าหมาย:** เปิดระบบรับชำระเงินและเริ่มบังคับใช้ Feature Limit ตามแพ็กเกจ (Decision 10A)
 * **สิ่งที่ส่งมอบ (Deliverables):**
   1. **Billing & Subscription Paywall:** ระบบตัดเงินรายเดือน/รายปี (Starter 990 บ. / Pro 1,490 บ.)
-  2. **PromptPay QR & SlipOK Verification:** ระบบสร้าง QR สแกนจ่ายและตรวจสลิปโอนเงินปลอมอัตโนมัติ
-  3. **B2B2C Add-on Pilot:** ทดสอบขายป้ายชื่อ Smart Tag และทดลองเปิดฟังก์ชันแชร์ลิงก์กล้องของห้องพัก (Third-party Cam Sharing)
+  2. **Feature Gating Enforcement:** เริ่มล็อกโควตาห้องและสัตว์เลี้ยงสำหรับแพ็กเกจ Starter (10 ห้อง / 300 สัตว์เลี้ยง)
+  3. **PromptPay QR & SlipOK Verification:** ระบบสร้าง QR สแกนจ่ายและตรวจสลิปโอนเงินปลอมอัตโนมัติ
+  4. **B2B2C Add-on Pilot:** ทดสอบขายป้ายชื่อ Smart Tag และทดลองเปิดฟังก์ชันแชร์ลิงก์กล้องของห้องพัก (Third-party Cam Sharing)
 
 ---
 
 ### 📈 Phase 4: Long-Term Expansion (เดือนที่ 2 เป็นต้นไป)
-* **สถานะ:** **NOT STARTED**
 * **เป้าหมาย:** สเกลสู่ 50–100 ร้าน และขยายโมดูลเฉพาะทาง
 * **สิ่งที่ส่งมอบ (Deliverables):**
-  1. **Grooming Queue Module:** ระบบคิวอาบน้ำตัดขนและคำนวณค่าคอมมิชชั่นช่าง
-  2. **Vaccine Auto-Recall Engine:** บอทเตือนฉีดวัคซีนและหยอดยาเห็บหมัดเข้า LINE เจ้าของล่วงหน้า
-  3. **Live RTSP/HLS Camera Bridge:** ระบบสตรีมมิ่งกล้องสดฝังในแอป
-  4. **Multi-Branch Control:** แดชบอร์ดรวมสำหรับเจ้าของธุรกิจที่มีมากกว่า 1 สาขา
+  1. **Multi-Branch Control Module:** แดชบอร์ดรวมและระบบจัดการหลายสาขาสำหรับธุรกิจที่มีหลายสาขา
+  2. **Grooming Queue Module:** ระบบคิวอาบน้ำตัดขนและคำนวณค่าคอมมิชชั่นช่าง
+  3. **Vaccine Auto-Recall Engine:** บอทเตือนฉีดวัคซีนและหยอดยาเห็บหมัดเข้า LINE เจ้าของล่วงหน้า
+  4. **Live RTSP/HLS Camera Bridge:** ระบบสตรีมมิ่งกล้องสดฝังในแอป
