@@ -4,6 +4,29 @@
 
 ---
 
+## 🚧 Current Implementation Status — 2026-08-20
+
+PawSpace ผ่านสถานะ **Documentation-only** แล้ว และมี codebase foundation บน branch `master` สำหรับพัฒนาต่อเป็น MVP
+
+**ขึ้นโครงแล้ว:**
+- Next.js App Router + TypeScript application foundation
+- Operations Dashboard / Room Matrix / Upcoming Check-ins / Activity UI
+- Daily Care Report Drawer UI
+- Supabase initial schema/migration
+- Multi-tenant + RLS foundation
+- GiST booking collision constraint
+- `add_pet_to_booking` และ LIFF claim RPC foundation
+- Daily Report schema + 1–4 photo constraint
+- Google Sheets mapping + sync queue/outbox foundation
+- LINE / Google Sheets integration adapter boundaries
+- `.env.example` และ configuration baseline
+
+**ยังไม่ถือว่า live:** Dashboard ปัจจุบันเป็น preview/demo data และ LINE, Google Sheets รวมถึง live Supabase end-to-end flow ยังต้องเชื่อมและ verify จริงก่อน Closed Beta
+
+ดูสถานะ implementation แบบละเอียดที่ [`docs/IMPLEMENTATION_STATUS.md`](./docs/IMPLEMENTATION_STATUS.md)
+
+---
+
 ## 🎯 ตำแหน่งผลิตภัณฑ์ (Product Positioning)
 
 **PawSpace** คือระบบปฏิบัติการสำหรับ **โรงแรมสัตว์เลี้ยง (Pet Hotel) และศูนย์รับฝากเลี้ยงกลางวัน (Pet Daycare)** โดยเฉพาะ (ไม่ปะปนกับคลินิกหรือร้านตัดขนใน V1)
@@ -31,6 +54,7 @@
 | 📋 [`docs/PRD.md`](./docs/PRD.md) | **Priority 1** | **Locked / Ready** | ข้อกำหนดฟังก์ชัน Lean MVP (P0-A, P0-B, P0-C), LIFF Claim Flow และ DB Constraints |
 | 🏛️ [`docs/SYSTEM_ARCHITECTURE.md`](./docs/SYSTEM_ARCHITECTURE.md) | **Priority 2** | **Production-Ready Specification** | สถาปัตยกรรมระบบ, Composite FK Tenant-Isolation, Complete RLS, Storage RLS, RPC Capacity Locking, Supabase Vault และ ID-based Google Sync |
 | 🗺️ [`docs/ROADMAP.md`](./docs/ROADMAP.md) | **Priority 3** | **Locked / Ready** | แผนผังการส่งมอบที่สอดคล้องกับ PRD (Phase 1 Core MVP ➔ Phase 2 Drive & Beta ➔ Phase 3 Monetization ➔ Phase 4 Expansion) |
+| 🔎 [`docs/IMPLEMENTATION_STATUS.md`](./docs/IMPLEMENTATION_STATUS.md) | Runtime Status | **Active** | สถานะ code foundation, UI preview, schema และ integration ที่ทำจริงเทียบกับสิ่งที่ยังต้องเชื่อม |
 | 💼 [`docs/BUSINESS_MODEL.md`](./docs/BUSINESS_MODEL.md) | **Priority 4** | **Locked / Ready** | โมเดลราคา V1 ที่แม่นยำ และตารางสมมติฐานทางธุรกิจ (Hypotheses H1–H4) |
 
 ### 💼 หมวดการตลาด ปฏิบัติการ และกฎหมาย (Go-To-Market & Operations)
