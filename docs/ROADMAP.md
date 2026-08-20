@@ -5,6 +5,41 @@
 
 ---
 
+## 🚧 Implementation Checkpoint — 2026-08-20
+
+Phase 1 เริ่ม implementation แล้ว โดยรอบ foundation ปัจจุบันขึ้นโครง application, UI และ database schema สำคัญเรียบร้อย
+
+### Foundation ที่ขึ้นโค้ดแล้ว
+
+- Next.js application baseline
+- Operations Dashboard preview
+- Room Matrix preview
+- Upcoming Check-ins / Activity / KPI UI
+- Daily Care Report Drawer preview
+- Supabase initial schema
+- tenant/RLS foundation
+- booking GiST exclusion constraint
+- multi-pet capacity RPC foundation
+- atomic LIFF claim RPC foundation
+- Daily Report schema
+- Google sync mapping + retry/outbox schema
+- LINE/Google integration adapter boundaries
+
+### Phase 1 ที่ยังต้องทำให้ Functional ก่อน Closed Beta
+
+- live Supabase Auth + staff/shop context
+- database-backed Room/Owner/Pet/Booking CRUD
+- live check-in/check-out and room status flow
+- Daily Report persistence + Storage upload
+- live LINE Messaging API transport
+- live Google Sheets sync worker/transport
+- RLS/concurrency/end-to-end verification
+- automated tests + typecheck + CI quality gate
+
+รายละเอียดสถานะราย capability ดูที่ [`IMPLEMENTATION_STATUS.md`](./IMPLEMENTATION_STATUS.md)
+
+---
+
 ## 🎯 ไทม์ไลน์ภาพรวม (Phase Overview)
 
 ```
@@ -18,6 +53,7 @@
 ## 📅 รายละเอียดการดำเนินงานรายเฟส
 
 ### 🚀 Phase 1: Lean MVP (สัปดาห์ที่ 1–2) — *Focus: The Core Daily Loop*
+* **สถานะ:** **IN PROGRESS — Foundation implemented; functional integration pending**
 * **เป้าหมาย:** สร้างระบบพื้นฐานที่ตอบโจทย์ The Core Daily Loop ให้สมบูรณ์และเสถียรที่สุด
 * **สิ่งที่ส่งมอบ (Deliverables):**
   1. **Shop Setup & Staff Auth (P0-A):**
@@ -39,6 +75,7 @@
 ---
 
 ### 🧪 Phase 2: Closed Beta & Real-World Validation (สัปดาห์ที่ 3)
+* **สถานะ:** **NOT STARTED — Blocked by functional Phase 1 completion**
 * **เป้าหมาย:** นำระบบไปให้โรงแรมสัตว์เลี้ยงจริง 5–10 ร้านทดลองใช้งานเพื่อเก็บ Feedback
 * **สิ่งที่ส่งมอบ (Deliverables):**
   1. **Direct Outreach:** ทักหาโรงแรมหมาแมว 30 ร้านใน กทม./ปริมณฑล มอบสิทธิ์ทดลองใช้ฟรี 30 วัน พร้อมฟรีบริการช่วยจัดผังห้องและนำเข้าข้อมูลเดิม
@@ -49,6 +86,7 @@
 ---
 
 ### 💰 Phase 3: Commercial Launch & Monetization (สัปดาห์ที่ 4)
+* **สถานะ:** **NOT STARTED**
 * **เป้าหมาย:** เปลี่ยนร้านค้าทดลองให้เป็นลูกค้าจ่ายเงินจริง (First Paying Customers)
 * **สิ่งที่ส่งมอบ (Deliverables):**
   1. **Billing & Subscription Paywall:** ระบบตัดเงินรายเดือน/รายปี (Starter 990 บ. / Pro 1,490 บ.)
@@ -58,6 +96,7 @@
 ---
 
 ### 📈 Phase 4: Long-Term Expansion (เดือนที่ 2 เป็นต้นไป)
+* **สถานะ:** **NOT STARTED**
 * **เป้าหมาย:** สเกลสู่ 50–100 ร้าน และขยายโมดูลเฉพาะทาง
 * **สิ่งที่ส่งมอบ (Deliverables):**
   1. **Grooming Queue Module:** ระบบคิวอาบน้ำตัดขนและคำนวณค่าคอมมิชชั่นช่าง
