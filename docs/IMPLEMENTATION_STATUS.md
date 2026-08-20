@@ -1,24 +1,22 @@
 # 📊 PawSpace — Current Implementation Status & Codebase Reality
 
-> **Last Verified:** 2026-08-20
+> **Last Verified:** 2026-08-20 (Phase 1 + Phase 2 gateway/RLS/concurrency suites executed for real by Claude against a local Supabase/Postgres instance — not a static review)
 > **Repository:** `Gutumrod/pawspace`
 > **Branch:** `master`
-> **Current Stage:** Phase 1 Schema Implemented (Untested Live) / Phase 2 Gateway Contract Documented / UI Preview
-> **Architecture Review Gate:** **READY FOR DEEP IMPLEMENTATION — DOCUMENTATION CONTRACT ONLY**
-> **Notice:** `SYSTEM_ARCHITECTURE.md` คือ Target Contract ที่ผ่าน review สำหรับเริ่มเขียน Target Migration แล้ว. Phase 1 schema (ตาราง/constraint/index) ถูก implement จริงใน migration แล้วและมี executable test file คู่กัน แต่ RPC/RLS/helper function/worker contract (Phase 2) ทั้งหมดยังเป็น `DOCUMENTED` และ **ยังไม่ live** จนกว่าจะมี migration แยกของ Phase 2 จริง
+> **Current Stage:** Phase 1 + Phase 2 schema/RPC/RLS layer implemented and executable-test-verified. Application layer (UI wiring, live integrations) still preview/stub.
+> **Architecture Review Gate:** **PHASE 1 + PHASE 2 DATABASE LAYER VERIFIED — APPLICATION INTEGRATION NEXT**
 
 ---
 
 ## Status Legend
 
 * **`DOCUMENTED`** — Requirement/SQL contract ถูกนิยามใน PRD + SYSTEM_ARCHITECTURE แต่ยังไม่อยู่ใน migration ปัจจุบัน
-* **`SCHEMA IMPLEMENTED`** — มี SQL อยู่ใน migration ปัจจุบัน แต่ไม่ได้หมายความว่า hardened target contract ใหม่ถูก implement แล้ว
-* **`TEST WRITTEN — NOT YET RUN`** — มี executable test file ครอบคลุม capability นี้แล้ว แต่ยังไม่มีบันทึกว่ารันจริงกับฐานข้อมูลแล้วผ่าน
+* **`SCHEMA IMPLEMENTED`** — มี SQL อยู่ใน migration ปัจจุบัน
 * **`UI PREVIEW`** — UI/interaction ใช้ mock data
 * **`CODE FOUNDATION`** — มี project/helper/type foundation
 * **`ADAPTER/STUB`** — มี interface/payload mock แต่ยังไม่มี live transport
 * **`LIVE INTEGRATION`** — ต่อ third-party/database จริง
-* **`VERIFIED`** — ผ่าน executable tests/E2E ตาม acceptance criteria แล้ว (ต้องมีบันทึกผลรันจริง ไม่ใช่แค่มีไฟล์ test)
+* **`VERIFIED`** — ผ่าน executable tests ที่รันจริงกับฐานข้อมูลจริงแล้ว (มีบันทึกผลรันจริงแนบ ไม่ใช่แค่มีไฟล์ test หรือรายงานจาก Agent)
 
 ---
 
@@ -27,22 +25,33 @@
 | Component | Current Status | Reality |
 | :--- | :---: | :--- |
 | Application Foundation | `CODE FOUNDATION` | Next.js 16.3.1, React 19, Tailwind, TypeScript, pnpm |
-| Operations Dashboard | `UI PREVIEW` | KPI / Room Matrix / Daily Report Drawer / Activity Feed ยังใช้ mock preview |
-| Phase 1 Database Schema | `SCHEMA IMPLEMENTED` | `supabase/migrations/20260220000000_initial_schema.sql` — ตาราง 10 ตัว, exclusion constraint, composite FK tenant-isolation, CHECK constraints (photo count, maintenance window, sync_queue status/attempts), indexes. ตรงกับ `SYSTEM_ARCHITECTURE.md` §4 ทุก column ที่เทียบแล้ว |
-| Phase 1 Executable Tests | `TEST WRITTEN — NOT YET RUN` | `supabase/tests/phase1_schema.sql` — 13 assertion ครอบคลุม cross-tenant FK, exclusion constraint (รวม cancelled-booking exemption), maintenance window partial-NULL rejection, daily-report membership FK, Asia/Bangkok business date default, 1–4 photo cardinality, idempotency key uniqueness, LINE retry key uniqueness, sync_queue status/attempts CHECK, และยืนยันว่า Phase 2 RPC/RLS ยังไม่หลุดเข้ามาใน Phase 1. **ยังไม่มีบันทึกว่ารันจริงกับ Postgres/Supabase แล้วผ่านทุกข้อ** — ต้องรันก่อนเลื่อนเป็น `VERIFIED` |
-| Booking Gateways (`create_booking`, schedule/status RPCs) | `DOCUMENTED` | นิยามเต็มใน SYSTEM_ARCHITECTURE.md §6 พร้อม lock ordering แต่ไม่อยู่ใน migration ปัจจุบัน — Phase 1 test ยืนยันว่าตั้งใจไม่ให้อยู่ |
-| Pet Assignment Concurrency (`add_pet_to_booking`, `remove_pet_from_booking`) | `DOCUMENTED` | Booking → Pets(sorted) → Room lock order, same-owner/no-overlap, confirmed-only removal — ยังไม่อยู่ใน migration |
-| Room Gateways (`create_room`, config, maintenance, mark-clean) | `DOCUMENTED` | partial-NULL maintenance rejected ที่ระดับ RPC + DB CHECK (CHECK มีใน migration แล้ว, RPC logic ยังไม่มี) |
-| Business Date Semantics | `SCHEMA IMPLEMENTED (default only)` | `daily_reports.report_date DEFAULT ((now() AT TIME ZONE 'Asia/Bangkok')::date)` มีใน migration แล้ว และมี test ยืนยัน; ฟังก์ชัน `pawspace_business_date()` ที่ RPC อื่นเรียกใช้ยังเป็น `DOCUMENTED` เท่านั้น |
-| Daily Report Gateway (`create_daily_report`, delivery tracking) | `DOCUMENTED` | คอลัมน์รองรับ (`idempotency_key`, `request_fingerprint`, `line_delivery_*`) มีใน migration แล้ว แต่ RPC ที่เขียนคอลัมน์เหล่านี้อย่างถูกต้อง (dedup, fingerprint conflict, worker lease) ยังไม่อยู่ใน migration |
-| Customer / Pet Gateways | `DOCUMENTED` | Browser generic DML ปิดตาม Phase 2 เท่านั้น; Phase 1 ยังไม่มี RLS เลยจึงยังไม่ได้ปิดจริง |
-| LINE Claim Flow | `DOCUMENTED` | คอลัมน์ (`line_claim_token_hash`, `line_claim_expires_at`, `line_claim_used_at`) มีใน migration แล้ว; RPC 48h token/hash/single-use/cross-tenant-reject ยังไม่อยู่ใน migration |
-| Staff / Tenant Bootstrap | `DOCUMENTED` | active-staff authorization, Owner-only management, last-active-owner invariant, trusted bootstrap service — ยังไม่มีโค้ด |
-| Google Sheets Binding + Outbox | `DOCUMENTED` | ตาราง `google_sync_mappings`/`sync_queue` และคอลัมน์ lease/retry มีใน migration แล้ว; proof-of-control binding RPC, worker, transactional enqueue ยังไม่อยู่ใน migration |
-| RLS + Table Privilege Lockdown | `DOCUMENTED` | **ยืนยันจากทั้ง migration และ test:** ไม่มี `ENABLE ROW LEVEL SECURITY` หรือ policy ใดๆ ใน Phase 1 migration ปัจจุบัน — ตั้งใจแยกไป Phase 2 ตามคอมเมนต์บรรทัดแรกของ migration |
-| Security Definer Helper Functions (`current_staff_shop_id`, `is_shop_owner`, ฯลฯ) | `DOCUMENTED` | ยืนยันไม่มีใน migration ปัจจุบัน — Phase 1 test raise exception ถ้าเจอ |
-| LINE Flex Message Adapter | `ADAPTER/STUB` | `lib/integrations.ts::sendDailyReport()` ปฏิเสธการยิงจริงเสมอ แม้ config ครบ (verified by reading source) |
-| Google Sheets Adapter | `ADAPTER/STUB` | `lib/integrations.ts::enqueueSheetSync()` ปฏิเสธการยิงจริงเสมอ แม้ config ครบ (verified by reading source) |
+| Operations Dashboard | `UI PREVIEW` | KPI / Room Matrix / Daily Report Drawer / Activity Feed ยังใช้ mock preview ไม่ได้ต่อกับ RPC layer ด้านล่างนี้จริง |
+| Database Schema (Phase 1 + Phase 2) | `VERIFIED` | `supabase/migrations/20260220000000_initial_schema.sql` + `20260820020000_phase2_authoritative_gateways.sql` ทั้งคู่ apply สำเร็จบน Postgres 17.6.1.106 จริง (`supabase db reset`, `supabase db lint --local` → no schema errors) |
+| Phase 1 Negative Tests (`phase1_schema.sql`) | `VERIFIED` | รันจริงกับ migration 1 แบบแยกเดี่ยว: ครบ 13 assertion ผ่านหมด รวมถึงยืนยันว่า Phase 2 ไม่หลุดเข้ามาใน migration 1 จริง |
+| Phase 2 RPC/RLS Negative Tests (`phase2_rpc_rls.sql`) | `VERIFIED` | รันจริงกับ migration รวม: function ครบ 19 ตัว, ไม่มี DML grant หลุดให้ `authenticated`, direct-INSERT ถูก block จริง, cross-tenant/wrong-owner ถูกปฏิเสธจริง, capacity/transfer/state-machine/immutable owner_id ผ่านจริง, forced-outbox-failure rollback จริง, disabled-staff เสีย RLS visibility จริง — exit 0, ตรวจ container log แล้วไม่มี crash |
+| Same-Pet Overlap Concurrency | `VERIFIED` | รัน 2 worker พร้อมกันจริงผ่านคนละ DB session: 1 คำขอสำเร็จ อีกคำขอโดน `Pet Conflict` จริง, verify เหลือ assignment แถวเดียวจริง |
+| Daily Report Duplicate Idempotency Concurrency | `VERIFIED` | รัน `create_daily_report` เดียวกัน (idempotency key เดียวกัน) พร้อมกัน 2 session จริง: ทั้งคู่ได้ `report_id` เดียวกันจริง |
+| Daily Report vs Checkout Race | `VERIFIED` | รัน checkout (`update_booking_status → checked_out`) แข่งกับ `create_daily_report` จริงผ่าน `FOR UPDATE` + `pg_sleep`: checkout ชนะจริง, report ที่ตามหลังถูก reject จริงด้วย "Booking is currently checked_out", ไม่มี stale report ถูก commit |
+| Booking Gateways (`create_booking`, schedule/status RPCs) | `VERIFIED` | ครอบคลุมโดย `phase2_rpc_rls.sql` ด้านบน |
+| Pet Assignment Concurrency (`add_pet_to_booking`, `remove_pet_from_booking`) | `VERIFIED` | ครอบคลุมโดย same-pet concurrency test ด้านบน |
+| Room Gateways (`create_room`, config, maintenance, mark-clean) | `SCHEMA IMPLEMENTED` | มีใน migration และผ่าน static/lint แล้ว แต่ยังไม่มี negative test เจาะจงแยกสำหรับ maintenance-window edge case ในชุดที่รันจริงรอบนี้ |
+| Business Date Semantics (`pawspace_business_date()`) | `VERIFIED` | ใช้จริงในทุก RPC ที่ทดสอบด้านบน (check-in date gate, maintenance state, report_date default) ผ่านจริงในทุก test |
+| Daily Report Gateway (`create_daily_report`, delivery tracking) | `VERIFIED` (create + idempotency + checkout-race) | worker lease/retry (`retry_daily_report_delivery`, stale `sending` recovery) ยังไม่มี test แยกในรอบนี้ — ยังเป็น `DOCUMENTED` เฉพาะส่วนนั้น |
+| Customer / Pet Gateways | `VERIFIED` (core creation/cross-tenant paths) | ครอบคลุมโดย `phase2_rpc_rls.sql`; `delete_pet`/`delete_pet_owner`/`transfer_pet_owner` เจาะจงยังไม่มี negative test แยก |
+| LINE Claim Flow | `DOCUMENTED` | RPC มีใน migration แต่ยังไม่มี test file แยกสำหรับ TTL/hash/single-use/cross-tenant-reject ในรอบนี้ |
+| Staff / Tenant Bootstrap | `DOCUMENTED` | ยังไม่มี test |
+| Google Sheets Binding + Outbox | `SCHEMA IMPLEMENTED` | ตารางและ `enqueue_sync_event` ผ่าน permission test แล้ว (`has_function_privilege` check) แต่ proof-of-control binding flow และ worker เองยังไม่มี test |
+| RLS + Table Privilege Lockdown | `VERIFIED` | ยืนยันจริงจาก `phase2_rpc_rls.sql`: ไม่มี DML grant หลุด, disabled staff เสีย visibility จริง |
+| LINE Flex Message Adapter | `ADAPTER/STUB` | `lib/integrations.ts::sendDailyReport()` ปฏิเสธการยิงจริงเสมอ แม้ config ครบ |
+| Google Sheets Adapter | `ADAPTER/STUB` | `lib/integrations.ts::enqueueSheetSync()` ปฏิเสธการยิงจริงเสมอ แม้ config ครบ |
+
+---
+
+## Known bug found and fixed during this verification pass
+
+`supabase/tests/phase2_rpc_rls.sql` originally called a `REVOKE`d `SECURITY DEFINER` function from a PL/pgSQL `DO` block and caught `insufficient_privilege` to assert the permission was denied. That exact pattern **segfaults this Postgres build** (`supabase/postgres:17.6.1.106`, signal 11), confirmed reproducible 3 times independently before the fix. Fixed by switching to the already-working static-check pattern (`has_function_privilege(...)`) used elsewhere in the same file. Re-verified clean (exit 0, no crash in container logs) after the fix. See `BRIEF-phase2-crash-fix-2026-08-20.md` for the original repro.
+
+Separately, `enqueue_sync_event`'s `digest()` call needed to be schema-qualified as `extensions.digest()` — with `search_path` locked to `public, pg_temp` inside `SECURITY DEFINER` functions, the unqualified call couldn't resolve `pgcrypto`'s function. Fixed and re-verified.
 
 ---
 
@@ -60,6 +69,4 @@ Production target ต้อง:
 
 ## Promotion Rule
 
-ห้ามเปลี่ยน hardened components จาก `DOCUMENTED` เป็น implemented/verified จากเอกสารหรือรายงาน Agent เพียงอย่างเดียว. ต้องตรวจ migration/code จริงและ executable negative/concurrency tests ก่อนทุกครั้ง.
-
-`TEST WRITTEN — NOT YET RUN` ไม่ใช่ `VERIFIED` — ต้องมีบันทึกผลรันจริง (เช่น `psql` output หรือ CI log) แนบก่อนเลื่อนสถานะ.
+ห้ามเปลี่ยน hardened components จาก `DOCUMENTED` เป็น implemented/verified จากเอกสารหรือรายงาน Agent เพียงอย่างเดียว. ต้องตรวจ migration/code จริงและ executable negative/concurrency tests ก่อนทุกครั้ง — รอบนี้ Claude รันทุก test เองจริงกับ Postgres 17.6.1.106 ผ่าน Docker/Supabase CLI local stack ก่อนจะ mark `VERIFIED` ในตารางด้านบน ไม่ได้เชื่อจากรายงานเพียงอย่างเดียว.
