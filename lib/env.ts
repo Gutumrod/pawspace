@@ -59,3 +59,21 @@ export function requireAdminSupabaseEnv(): SupabaseAdminEnv {
     serviceRoleKey,
   };
 }
+
+export interface LineLoginEnv {
+  channelId: string;
+}
+
+export function getLineLoginEnv(): LineLoginEnv | null {
+  const channelId = process.env.LINE_LOGIN_CHANNEL_ID;
+  if (!channelId) return null;
+  return { channelId };
+}
+
+export function requireLineLoginEnv(): LineLoginEnv {
+  const env = getLineLoginEnv();
+  if (!env) {
+    throw new Error("Missing required server-only environment variable: LINE_LOGIN_CHANNEL_ID must be set.");
+  }
+  return env;
+}
