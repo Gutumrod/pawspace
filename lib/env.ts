@@ -147,3 +147,38 @@ export function requireGoogleSyncDispatchSecret(): string {
   }
   return value;
 }
+export function requireCameraSessionSigningSecret(): string {
+  const value = process.env.CAMERA_SESSION_SIGNING_SECRET?.trim();
+  if (!value || new TextEncoder().encode(value).byteLength < 32) {
+    throw new Error("Missing or weak server-only CAMERA_SESSION_SIGNING_SECRET; use at least 32 bytes.");
+  }
+  return value;
+}
+
+export function requireCameraIpHashPepper(): string {
+  const value = process.env.CAMERA_IP_HASH_PEPPER?.trim();
+  if (!value || new TextEncoder().encode(value).byteLength < 16) {
+    throw new Error("Missing or weak server-only CAMERA_IP_HASH_PEPPER; use at least 16 bytes.");
+  }
+  return value;
+}
+
+export function requireCameraAllowedFeedHosts(): string[] {
+  const raw = process.env.CAMERA_ALLOWED_FEED_HOSTS?.trim();
+  if (!raw) {
+    throw new Error("Missing server-only CAMERA_ALLOWED_FEED_HOSTS allowlist.");
+  }
+  const hosts = raw.split(",").map((value) => value.trim().toLowerCase()).filter(Boolean);
+  if (hosts.length === 0 || hosts.some((host) => !/^[a-z0-9.-]+$/.test(host))) {
+    throw new Error("CAMERA_ALLOWED_FEED_HOSTS must be a comma-separated hostname allowlist.");
+  }
+  return Array.from(new Set(hosts));
+}
+
+export function requireCameraRequesterIpHeader(): string {
+  const value = process.env.CAMERA_REQUESTER_IP_HEADER?.trim().toLowerCase();
+  if (!value || !/^[a-z0-9-]+$/.test(value)) {
+    throw new Error("Missing or invalid CAMERA_REQUESTER_IP_HEADER trusted edge header name.");
+  }
+  return value;
+}
