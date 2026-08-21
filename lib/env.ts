@@ -77,3 +77,24 @@ export function requireLineLoginEnv(): LineLoginEnv {
   }
   return env;
 }
+
+export function getLineChannelAccessTokenForShop(shopId: string): string | null {
+  const raw = process.env.LINE_CHANNEL_ACCESS_TOKENS_JSON;
+  if (!raw) return null;
+
+  try {
+    const parsed = JSON.parse(raw) as Record<string, unknown>;
+    const token = parsed[shopId];
+    return typeof token === "string" && token.trim() ? token.trim() : null;
+  } catch {
+    throw new Error("LINE_CHANNEL_ACCESS_TOKENS_JSON must be valid JSON keyed by shop UUID.");
+  }
+}
+
+export function requireLineDispatchSecret(): string {
+  const value = process.env.LINE_DISPATCH_SECRET?.trim();
+  if (!value) {
+    throw new Error("Missing required server-only environment variable: LINE_DISPATCH_SECRET must be set.");
+  }
+  return value;
+}
