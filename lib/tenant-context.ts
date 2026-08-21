@@ -124,3 +124,16 @@ export async function requireOwnerContext(): Promise<{ staff: StaffContext; clie
 
   return { staff, client };
 }
+/**
+ * Asserts that the current request belongs to an active shop owner or manager.
+ * Used for tenant integration settings that staff must not control.
+ */
+export async function requireManagerOrOwnerContext(): Promise<{ staff: StaffContext; client: SupabaseClient }> {
+  const { staff, client } = await requireTenantContext();
+
+  if (staff.role !== "owner" && staff.role !== "manager") {
+    throw new Error("Forbidden: Owner or manager role required for this operation.");
+  }
+
+  return { staff, client };
+}

@@ -19,7 +19,7 @@ export type DailyReportPayload = {
 export type SheetSyncPayload = {
   shopId: string;
   recordId: string;
-  entityType: "customer" | "booking";
+  entityType: "pet_customer" | "booking";
   values: Record<string, string | number | null>;
 };
 
@@ -28,7 +28,7 @@ function hasLineConfig() {
 }
 
 function hasSheetsConfig() {
-  return Boolean(process.env.GOOGLE_SERVICE_ACCOUNT_JSON && process.env.GOOGLE_SHEET_ID);
+  return Boolean(process.env.GOOGLE_SERVICE_ACCOUNT_JSON);
 }
 
 export function getIntegrationStatus() {

@@ -98,3 +98,52 @@ export function requireLineDispatchSecret(): string {
   }
   return value;
 }
+
+export interface GoogleServiceAccountCredentials {
+  client_email: string;
+  private_key: string;
+  project_id?: string;
+  private_key_id?: string;
+  token_uri?: string;
+}
+
+export function requireGoogleServiceAccountCredentials(): GoogleServiceAccountCredentials {
+  const raw = process.env.GOOGLE_SERVICE_ACCOUNT_JSON;
+  if (!raw) {
+    throw new Error("Missing required server-only environment variable: GOOGLE_SERVICE_ACCOUNT_JSON must be set.");
+  }
+
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(raw);
+  } catch {
+    throw new Error("GOOGLE_SERVICE_ACCOUNT_JSON must be valid JSON.");
+  }
+
+  if (!parsed || typeof parsed !== "object") {
+    throw new Error("GOOGLE_SERVICE_ACCOUNT_JSON must contain a service account credential object.");
+  }
+
+  const value = parsed as Record<string, unknown>;
+  const clientEmail = typeof value.client_email === "string" ? value.client_email.trim() : "";
+  const privateKey = typeof value.private_key === "string" ? value.private_key : "";
+  if (!clientEmail || !privateKey.includes("BEGIN PRIVATE KEY")) {
+    throw new Error("GOOGLE_SERVICE_ACCOUNT_JSON is missing valid client_email/private_key fields.");
+  }
+
+  return {
+    client_email: clientEmail,
+    private_key: privateKey,
+    project_id: typeof value.project_id === "string" ? value.project_id : undefined,
+    private_key_id: typeof value.private_key_id === "string" ? value.private_key_id : undefined,
+    token_uri: typeof value.token_uri === "string" ? value.token_uri : undefined,
+  };
+}
+
+export function requireGoogleSyncDispatchSecret(): string {
+  const value = process.env.GOOGLE_SYNC_DISPATCH_SECRET?.trim();
+  if (!value) {
+    throw new Error("Missing required server-only environment variable: GOOGLE_SYNC_DISPATCH_SECRET must be set.");
+  }
+  return value;
+}
