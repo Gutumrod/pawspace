@@ -127,3 +127,44 @@ button:focus-visible, input:focus-visible, textarea:focus-visible { outline: 3px
 @media (max-width:1050px) { .sidebar { width: 78px; flex-basis: 78px; padding-inline: 10px; } .brand { justify-content: center; padding-inline: 0; } .brand-copy, .nav-label, .nav-item span, .shop-card { display: none; } .nav-item { justify-content: center; padding-inline: 0; } .main { padding-inline: 20px; } .section-grid, .bottom-grid { grid-template-columns: 1fr; } }
 @media (max-width:720px) { .app-shell { display: block; } .sidebar { width: 100%; height: 66px; flex-direction: row; align-items: center; padding: 10px 14px; position: sticky; top: 0; z-index: 10; } .brand { padding: 0; margin-right: auto; } .nav-list { display: flex; } .main { padding: 18px 14px 32px; } .topbar { align-items: flex-start; flex-direction: column; } .header-actions { width: 100%; flex-wrap: wrap; } .search { flex: 1; min-width: 160px; } .kpi-grid { grid-template-columns: repeat(2,minmax(0,1fr)); } .room-grid { grid-template-columns: repeat(2,minmax(0,1fr)); } .panel { padding: 15px; } }
 @media (prefers-reduced-motion:reduce) { *, *::before, *::after { animation-duration:.01ms !important; transition-duration:.01ms !important; } }
+
+/* Phase 10 pilot operations */
+.pilot-section, .pilot-stack { margin-top: 14px; }
+.pilot-stack { display: grid; gap: 14px; }
+.pilot-notice { padding: 11px 14px; border-radius: 12px; margin-bottom: 14px; font-size: 12px; border: 1px solid; }
+.pilot-notice.ok { background: #eaf8ef; border-color: #b8e2c8; color: #246846; }
+.pilot-notice.error { background: #fff0ee; border-color: #f3c1ba; color: #9a3f32; }
+.pilot-loading { position: fixed; right: 18px; bottom: 18px; z-index: 40; background: var(--deep); color: #fff; padding: 9px 12px; border-radius: 10px; font-size: 11px; }
+.pilot-kpi-text { font-size: 18px; margin-top: 16px; }
+.pilot-empty { color: var(--muted); font-size: 12px; padding: 20px; }
+.pilot-form { display: grid; gap: 16px; }
+.pilot-grid-4 { display: grid; grid-template-columns: repeat(4,minmax(0,1fr)); gap: 10px; }
+.pilot-grid-2 { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 8px; }
+.pilot-grid-4 label, .pilot-grid-2 label { display: grid; gap: 6px; color: var(--muted); font-size: 10px; }
+.pilot-grid-4 input, .pilot-grid-4 select, .pilot-grid-2 input, .pilot-grid-2 select, .pilot-action-row input, .pilot-action-row select { width: 100%; min-height: 38px; border: 1px solid var(--line); border-radius: 10px; background: var(--surface); color: var(--ink); padding: 8px 10px; font-size: 12px; }
+.pilot-span-3 { grid-column: span 3; }
+.pilot-span-4 { grid-column: span 4; }
+.pilot-list { display: grid; gap: 12px; }
+.pilot-list.compact { margin-top: 14px; }
+.pilot-action-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-top: 12px; }
+.pilot-action-row > input, .pilot-action-row > select { width: auto; min-width: 130px; flex: 1; }
+.pilot-inline-form { margin-top: 14px; }
+.pilot-pets, .pilot-copy { color: var(--ink); font-size: 12px; line-height: 1.6; }
+.pilot-pet-grid { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 10px; margin-top: 16px; }
+.pilot-pet-card { border: 1px solid var(--line); background: #fbfdfc; border-radius: 12px; padding: 12px; display: grid; gap: 10px; }
+.pilot-token { display: block; overflow-wrap: anywhere; background: #f3f7f5; border: 1px solid var(--line); border-radius: 10px; padding: 10px; margin: 12px 0; font-size: 11px; }
+.pilot-staff-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; border-top: 1px solid var(--line); padding: 12px 0; }
+.pilot-small { margin-top: 10px; min-height: 32px; }
+.danger { color: #a23d31; border-color: #edc3bd; }
+
+@media (max-width:900px) {
+  .pilot-grid-4 { grid-template-columns: repeat(2,minmax(0,1fr)); }
+  .pilot-span-3, .pilot-span-4 { grid-column: span 2; }
+}
+@media (max-width:620px) {
+  .pilot-grid-4, .pilot-grid-2, .pilot-pet-grid { grid-template-columns: 1fr; }
+  .pilot-span-3, .pilot-span-4 { grid-column: span 1; }
+  .pilot-staff-row { align-items: flex-start; flex-direction: column; }
+  .pilot-action-row { align-items: stretch; flex-direction: column; }
+  .pilot-action-row > input, .pilot-action-row > select, .pilot-action-row > button { width: 100%; }
+}

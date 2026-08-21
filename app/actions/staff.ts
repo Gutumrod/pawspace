@@ -94,8 +94,10 @@ export async function inviteStaffAction(input: InviteStaffInput): Promise<StaffA
         };
       }
     } else {
+      const appBaseUrl = process.env.APP_BASE_URL || "http://127.0.0.1:3000";
       const { data: inviteData, error: inviteError } = await admin.auth.admin.inviteUserByEmail(email, {
         data: { name },
+        redirectTo: `${appBaseUrl}/auth/accept-invite`,
       });
 
       if (!inviteError && inviteData?.user) {
@@ -137,7 +139,10 @@ export async function inviteStaffAction(input: InviteStaffInput): Promise<StaffA
       // was sent above) - give them a way to establish credentials via a password-reset
       // email instead of leaving the membership unusable.
       if (!input.password) {
-        const { error: resetError } = await getSupabaseServerClient().auth.resetPasswordForEmail(email);
+        const appBaseUrl = process.env.APP_BASE_URL || "http://127.0.0.1:3000";
+        const { error: resetError } = await getSupabaseServerClient().auth.resetPasswordForEmail(email, {
+          redirectTo: `${appBaseUrl}/auth/accept-invite`,
+        });
         if (resetError) {
           logger.warn("Failed to send password-reset email to existing staff account", {
             email,

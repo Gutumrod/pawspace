@@ -45,7 +45,7 @@ function validateInput(input: CreateDailyReportInput): string | null {
       const parsed = new URL(url);
       if (parsed.protocol === "https:") return false;
       const localHost = parsed.hostname === "127.0.0.1" || parsed.hostname === "localhost";
-      return !(process.env.NODE_ENV !== "production" && parsed.protocol === "http:" && localHost);
+      return !(parsed.protocol === "http:" && localHost);
     } catch {
       return true;
     }
