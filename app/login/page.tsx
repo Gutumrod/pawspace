@@ -32,30 +32,30 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-[var(--background)] p-4">
-      <div className="w-full max-w-md bg-[var(--surface)] border border-[var(--line)] rounded-2xl p-8 shadow-sm">
-        <div className="flex items-center gap-3 mb-6">
-          <div className="w-10 h-10 rounded-xl bg-[var(--mint)] text-[var(--deep)] grid place-items-center font-black text-lg">
+    <div className="login-shell">
+      <div className="login-card">
+        <div className="login-brand">
+          <div className="login-mark">
             P
           </div>
           <div>
-            <h1 className="text-xl font-bold text-[var(--ink)] tracking-tight">PawSpace</h1>
-            <p className="text-xs text-[var(--muted)]">Pet Hotel Operations</p>
+            <h1 className="login-title">PawSpace</h1>
+            <p className="login-caption">Pet Hotel Operations</p>
           </div>
         </div>
 
-        <h2 className="text-lg font-semibold text-[var(--ink)] mb-1">เข้าสู่ระบบสำหรับพนักงาน</h2>
-        <p className="text-xs text-[var(--muted)] mb-6">กรอกอีเมลและรหัสผ่านเพื่อเข้าใช้งานระบบโรงแรมสัตว์เลี้ยง</p>
+        <h2 className="login-title">เข้าสู่ระบบสำหรับพนักงาน</h2>
+        <p className="login-copy">กรอกอีเมลและรหัสผ่านเพื่อเข้าใช้งานระบบโรงแรมสัตว์เลี้ยง</p>
 
         {error && (
-          <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-xl text-xs text-red-700">
+          <div className="login-error">
             {error}
           </div>
         )}
 
-        <form onSubmit={handleSubmit} className="space-y-4">
+        <form onSubmit={handleSubmit} className="login-form">
           <div>
-            <label className="block text-xs font-semibold text-[var(--ink)] mb-1.5" htmlFor="email">
+            <label className="login-field" htmlFor="email">
               อีเมล (Email)
             </label>
             <input
@@ -65,12 +65,12 @@ export default function LoginPage() {
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               placeholder="staff@pawspace.co"
-              className="w-full bg-[var(--surface)] border border-[var(--line)] rounded-xl px-3.5 py-2.5 text-sm text-[var(--ink)] focus:outline-none focus:ring-2 focus:ring-[var(--deep)]"
+              className="login-input"
             />
           </div>
 
           <div>
-            <label className="block text-xs font-semibold text-[var(--ink)] mb-1.5" htmlFor="password">
+            <label className="login-field" htmlFor="password">
               รหัสผ่าน (Password)
             </label>
             <input
@@ -80,14 +80,14 @@ export default function LoginPage() {
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               placeholder="••••••••"
-              className="w-full bg-[var(--surface)] border border-[var(--line)] rounded-xl px-3.5 py-2.5 text-sm text-[var(--ink)] focus:outline-none focus:ring-2 focus:ring-[var(--deep)]"
+              className="login-input"
             />
           </div>
 
           <button
             type="submit"
             disabled={loading}
-            className="w-full mt-2 bg-[var(--deep)] hover:bg-[#236153] text-white font-semibold py-2.5 px-4 rounded-xl text-sm transition duration-150 disabled:opacity-50"
+            className="primary-button login-submit"
           >
             {loading ? "กำลังเข้าสู่ระบบ..." : "เข้าสู่ระบบ"}
           </button>
