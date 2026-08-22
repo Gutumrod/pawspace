@@ -36,22 +36,26 @@ export default async function LineBookingPage({ searchParams }: PageProps) {
   const liffId = process.env.NEXT_PUBLIC_LINE_LIFF_ID || "";
 
   return (
-    <main className="min-h-screen bg-slate-50 px-4 py-8 md:py-12">
-      <div className="mx-auto max-w-md rounded-3xl bg-white p-6 shadow-sm border border-slate-100">
-        <div className="mb-6 flex items-center justify-between border-b border-slate-100 pb-4">
-          <div className="flex items-center gap-2">
-            <span className="text-2xl">🐾</span>
-            <div>
-              <h1 className="text-lg font-bold text-slate-900 leading-tight">PawSpace</h1>
-              <p className="text-xs text-slate-500">ระบบจองห้องพักสัตว์เลี้ยง</p>
+    <main className="liff-shell">
+      <div className="liff-container">
+        <div className="liff-card">
+          <header className="liff-header">
+            <div className="liff-brand">
+              <div className="brand-mark" aria-hidden="true">
+                🐾
+              </div>
+              <div>
+                <h1 className="liff-brand-title">PawSpace</h1>
+                <p className="liff-brand-subtitle">ระบบจองห้องพักสัตว์เลี้ยง</p>
+              </div>
             </div>
-          </div>
-          <span className="rounded-full bg-emerald-50 px-2.5 py-1 text-xs font-medium text-emerald-700">
-            LINE Booking
-          </span>
-        </div>
+            <span className="liff-badge">
+              <span>✦</span> LINE Booking
+            </span>
+          </header>
 
-        <LineBookingClient shopId={shopId} liffId={liffId} />
+          <LineBookingClient shopId={shopId} liffId={liffId} />
+        </div>
       </div>
     </main>
   );
