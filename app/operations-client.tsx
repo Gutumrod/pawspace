@@ -1,10 +1,20 @@
-﻿"use client";
+"use client";
 
 import { useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import type { OperationsDTO, RoomType } from "@/lib/operations-service";
 import { logoutAction } from "@/app/actions/auth";
-import { createBookingAction, addPetToBookingAction, removePetFromBookingAction, updateBookingScheduleAction, updateBookingStatusAction, setRoomMaintenanceAction, markRoomCleanAction } from "@/app/actions/booking";
+import {
+  createBookingAction,
+  addPetToBookingAction,
+  removePetFromBookingAction,
+  updateBookingScheduleAction,
+  updateBookingStatusAction,
+  setRoomMaintenanceAction,
+  markRoomCleanAction,
+  confirmBookingRequestAction,
+  declineBookingRequestAction,
+} from "@/app/actions/booking";
 import { createRoomAction, updateRoomAction, createOwnerAction, updateOwnerAction, createPetAction, updatePetAction } from "@/app/actions/operations";
 import { inviteStaffAction, disableStaffAction, enableStaffAction, changeStaffRoleAction, removeStaffAction } from "@/app/actions/staff";
 import { generateLineClaimTokenAction, resetLineLinkAction } from "@/app/actions/line-claim";
@@ -111,6 +121,75 @@ export default function OperationsClient({ initial }: { initial: OperationsDTO }
           </section>
         </>}
         {tab === "bookings" && <section className="pilot-stack">
+          {initial.bookingRequests.filter((r) => r.status === "requested").length > 0 && (
+            <div className="card panel" style={{ borderLeft: "4px solid #f59e0b" }}>
+              <div className="panel-header">
+                <div>
+                  <h2 className="panel-title" style={{ color: "#b45309" }}>
+                    คำขอจองจากลูกค้าทาง LINE ({initial.bookingRequests.filter((r) => r.status === "requested").length})
+                  </h2>
+                  <div className="panel-subtitle">รอการยืนยันหรือปฏิเสธเพื่อจัดสรรห้องพัก</div>
+                </div>
+                <span className="status-chip chip-occupied">
+                  {initial.bookingRequests.filter((r) => r.status === "requested").length} คำขอรอยืนยัน
+                </span>
+              </div>
+              <div className="pilot-list" style={{ marginTop: "1rem" }}>
+                {initial.bookingRequests
+                  .filter((r) => r.status === "requested")
+                  .map((req) => {
+                    const owner = ownersById.get(req.ownerId);
+                    const room = roomsById.get(req.roomId);
+                    const reqPets = req.petIds.map((id) => petsById.get(id)?.name || id).join(", ");
+                    return (
+                      <article
+                        className="card panel"
+                        key={req.id}
+                        style={{ background: "#fffbeb", border: "1px solid #fef3c7" }}
+                      >
+                        <div className="panel-header">
+                          <div>
+                            <h3 className="panel-title">
+                              {owner?.firstName || "ลูกค้า"} ({owner?.phone || "-"}) · ขอจองห้อง {room?.number || "-"}
+                            </h3>
+                            <div className="panel-subtitle">
+                              {req.checkInDate} → {req.checkOutDate} · สัตว์: {reqPets || "ไม่มีระบุ"} · ยอดประเมิน ฿{req.totalAmount.toLocaleString()}
+                            </div>
+                            {req.specialRequests && (
+                              <div style={{ fontSize: "0.85rem", color: "#6b7280", marginTop: "0.25rem" }}>
+                                คำขอพิเศษ: {req.specialRequests}
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                        <div className="pilot-action-row" style={{ marginTop: "0.75rem" }}>
+                          <button
+                            className="primary-button"
+                            disabled={pending}
+                            onClick={() => run("อนุมัติการจอง", () => confirmBookingRequestAction(req.id))}
+                          >
+                            ✓ ยืนยันการจอง (Confirm)
+                          </button>
+                          <button
+                            className="secondary-button danger"
+                            disabled={pending}
+                            onClick={() => {
+                              const reason = window.prompt("เหตุผลในการปฏิเสธ (optional):");
+                              if (reason !== null) {
+                                run("ปฏิเสธคำขอจอง", () => declineBookingRequestAction(req.id, reason));
+                              }
+                            }}
+                          >
+                            ✕ ปฏิเสธ (Decline)
+                          </button>
+                        </div>
+                      </article>
+                    );
+                  })}
+              </div>
+            </div>
+          )}
+
           <form data-testid="booking-create-form" className="card panel pilot-form" onSubmit={(e) => { e.preventDefault(); const f = new FormData(e.currentTarget); run("สร้างการจอง", () => createBookingAction({ ownerId: String(f.get("ownerId")), roomId: String(f.get("roomId")), checkInDate: String(f.get("checkInDate")), checkOutDate: String(f.get("checkOutDate")), totalAmount: Number(f.get("totalAmount") || 0), specialRequests: String(f.get("specialRequests") || "") })); }}>
             <h2 className="panel-title">สร้างการจอง</h2><div className="pilot-grid-4">
               <label>ลูกค้า<select name="ownerId" required>{initial.owners.map((o) => <option key={o.id} value={o.id}>{o.firstName} {o.lastName || ""}</option>)}</select></label>

@@ -6,7 +6,22 @@ import { logger } from "@/lib/logger";
 
 export type RoomStatus = "available" | "occupied" | "cleaning" | "maintenance";
 export type BookingStatus = "confirmed" | "checked_in" | "checked_out" | "cancelled";
+export type BookingRequestStatus = "requested" | "confirmed" | "declined" | "cancelled";
 export type RoomType = "standard" | "deluxe" | "vip" | "cat_condo";
+
+export interface BookingRequestDTO {
+  id: string;
+  ownerId: string;
+  roomId: string;
+  checkInDate: string;
+  checkOutDate: string;
+  status: BookingRequestStatus;
+  totalAmount: number;
+  specialRequests: string | null;
+  petIds: string[];
+  requestedByLineUserId: string;
+  createdAt: string;
+}
 
 export interface OperationsDTO {
   staff: Pick<StaffContext, "userId" | "shopId" | "name" | "email" | "role" | "shopName" | "shopSlug">;
@@ -16,6 +31,7 @@ export interface OperationsDTO {
   owners: Array<{ id: string; firstName: string; lastName: string | null; phone: string; emergencyPhone: string | null; address: string | null; lineLinked: boolean }>;
   pets: Array<{ id: string; ownerId: string; name: string; species: "dog" | "cat"; breed: string | null; gender: string | null; birthDate: string | null; weightKg: number | null; specialCareNotes: string | null; allergies: string | null }>;
   bookings: Array<{ id: string; ownerId: string; roomId: string; checkInDate: string; checkOutDate: string; status: BookingStatus; totalAmount: number; specialRequests: string | null; petIds: string[] }>;
+  bookingRequests: BookingRequestDTO[];
   reports: Array<{ id: string; bookingId: string; petId: string; reportDate: string; foodStatus: string; excretionStatus: string; moodStatus: string; staffNotes: string | null; deliveryStatus: "pending" | "sending" | "sent" | "failed"; retryCount: number; createdAt: string }>;
   staffMembers: Array<{ id: string; email: string; name: string; role: "owner" | "manager" | "staff"; isActive: boolean }>;
 }
@@ -35,17 +51,18 @@ export async function getOperationsSnapshot(): Promise<OperationsDTO> {
   assertNoError("Business date", businessDateResult.error);
   if (typeof businessDateResult.data !== "string") throw new Error("Invalid business date response.");
 
-  const [shopResult, roomsResult, ownersResult, petsResult, bookingsResult, bookingPetsResult, reportsResult] = await Promise.all([
+  const [shopResult, roomsResult, ownersResult, petsResult, bookingsResult, bookingPetsResult, requestsResult, reportsResult] = await Promise.all([
     client.from("shops").select("name,slug,google_sheet_id,line_oa_id").eq("id", staff.shopId).single(),
     client.from("rooms").select("id,room_number,room_type,capacity_pets,base_price_per_night,status,maintenance_from,maintenance_until").order("room_number"),
     client.from("pet_owners").select("id,first_name,last_name,phone,emergency_phone,address,line_user_id").order("first_name"),
     client.from("pets").select("id,owner_id,name,species,breed,gender,birth_date,weight_kg,special_care_notes,allergies").order("name"),
     client.from("bookings").select("id,owner_id,room_id,check_in_date,check_out_date,booking_status,total_amount,special_requests").order("check_in_date", { ascending: false }).limit(200),
     client.from("booking_pets").select("booking_id,pet_id"),
+    client.from("booking_requests").select("id,owner_id,room_id,check_in_date,check_out_date,status,total_amount,special_requests,pet_ids,requested_by_line_user_id,created_at").order("created_at", { ascending: false }).limit(100),
     client.from("daily_reports").select("id,booking_id,pet_id,report_date,food_status,excretion_status,mood_status,staff_notes,line_delivery_status,line_retry_count,created_at").order("created_at", { ascending: false }).limit(200),
   ]);
 
-  [shopResult, roomsResult, ownersResult, petsResult, bookingsResult, bookingPetsResult, reportsResult].forEach((result, index) => assertNoError(`Operations read ${index + 1}`, result.error));
+  [shopResult, roomsResult, ownersResult, petsResult, bookingsResult, bookingPetsResult, requestsResult, reportsResult].forEach((result, index) => assertNoError(`Operations read ${index + 1}`, result.error));
   if (!shopResult.data) throw new Error("Current shop is unavailable.");
   let staffRows: OperationsDTO["staffMembers"] = [];
   if (staff.role === "owner") {
@@ -94,6 +111,19 @@ export async function getOperationsSnapshot(): Promise<OperationsDTO> {
       id: String(row.id), ownerId: String(row.owner_id), roomId: String(row.room_id), checkInDate: String(row.check_in_date),
       checkOutDate: String(row.check_out_date), status: row.booking_status as BookingStatus, totalAmount: toNumber(row.total_amount),
       specialRequests: row.special_requests ? String(row.special_requests) : null, petIds: petIdsByBooking.get(String(row.id)) ?? [],
+    })),
+    bookingRequests: (requestsResult.data ?? []).map((row) => ({
+      id: String(row.id),
+      ownerId: String(row.owner_id),
+      roomId: String(row.room_id),
+      checkInDate: String(row.check_in_date),
+      checkOutDate: String(row.check_out_date),
+      status: row.status as BookingRequestStatus,
+      totalAmount: toNumber(row.total_amount),
+      specialRequests: row.special_requests ? String(row.special_requests) : null,
+      petIds: Array.isArray(row.pet_ids) ? row.pet_ids.map(String) : [],
+      requestedByLineUserId: String(row.requested_by_line_user_id),
+      createdAt: String(row.created_at),
     })),
     reports: (reportsResult.data ?? []).map((row) => ({
       id: String(row.id), bookingId: String(row.booking_id), petId: String(row.pet_id), reportDate: String(row.report_date),

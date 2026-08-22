@@ -102,3 +102,35 @@ export async function setRoomMaintenanceAction(
 export async function markRoomCleanAction(roomId: string): Promise<ActionResult> {
   return withTenant("markRoomClean", (client, actor) => markRoomClean(client, actor, roomId));
 }
+
+export async function confirmBookingRequestAction(
+  requestId: string,
+  assignedRoomId?: string,
+): Promise<ActionResult<{ bookingId: string }>> {
+  return withTenant("confirmBookingRequest", async (client) => {
+    const { data, error } = await client.rpc("confirm_booking_request", {
+      p_request_id: requestId,
+      p_assigned_room_id: assignedRoomId || null,
+    });
+    if (error) {
+      return { success: false, error: error.message };
+    }
+    return { success: true, data: { bookingId: data as string } };
+  });
+}
+
+export async function declineBookingRequestAction(
+  requestId: string,
+  reason?: string,
+): Promise<ActionResult> {
+  return withTenant("declineBookingRequest", async (client) => {
+    const { error } = await client.rpc("decline_booking_request", {
+      p_request_id: requestId,
+      p_reason: reason?.trim() || null,
+    });
+    if (error) {
+      return { success: false, error: error.message };
+    }
+    return { success: true };
+  });
+}
