@@ -13,8 +13,9 @@ This block is written and re-added by `next dev` — verify at `node_modules/nex
 
 Before implementing any new capability, check Module Hub first.
 
-Module Hub path:
-`D:\AI-Workspace\projects\modules-hub`
+Module Hub paths:
+- Windows: `D:\AI-Workspace\projects\modules-hub`
+- macOS: `~/AI-Workspace/projects/modules-hub`
 
 Module Hub is a **copy-and-own source library**. For PawSpace work, treat the Module Hub repository as **READ-ONLY**.
 
@@ -51,6 +52,7 @@ Development/review context is split deliberately:
 - Chat group 1: Phase 1–3
 - Chat group 2: Phase 4–6
 - Chat group 3: Phase 7–9
-- Final chat group: Phase 10 Pilot
+- Chat group 4: Phase 10 Pilot
+- Phase 11+: continue only from an explicit per-phase brief/handoff and a verified clean repository baseline; do not infer an upper phase limit from the historical chat partition.
 
 At each boundary, create/read a local handoff file before continuing. A new chat must not infer prior Phase state from conversation memory alone; it must verify the local repository, commits, Source of Truth, unresolved issues, and review gates from disk.

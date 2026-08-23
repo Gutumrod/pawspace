@@ -188,4 +188,24 @@ Tested across target mobile viewports for LINE In-App Browser:
 
 ## 9. Final Status
 
-**`PHASE 11.1 DESIGN ALIGNMENT — READY FOR RE-REVIEW`**
+**`PHASE 11.1 DESIGN ALIGNMENT — PASSED`**
+
+
+---
+
+## 10. Independent Gate 2 Closure
+
+Independent re-review was completed before commit `1b5e7b9`. The reviewer re-ran the required gates and confirmed the Phase 11.1 diff remained presentation-only.
+
+Recorded Gate 2 results:
+- `pnpm exec tsc --noEmit` — **PASS**
+- `pnpm lint` — **PASS**
+- `pnpm build` — **PASS**
+- `git diff --check` — **PASS**
+- Phase 11 regression — **45/45 PASS**
+- Phase 10 browser E2E — **8/8 PASS**
+- Forbidden-file diff audit — **PASS**
+
+Reviewer verdict: **`PHASE 11.1 DESIGN ALIGNMENT — PASSED`**
+
+The earlier `READY FOR RE-REVIEW` status represented the implementer boundary before independent Gate 2 and is superseded by this closure record.
