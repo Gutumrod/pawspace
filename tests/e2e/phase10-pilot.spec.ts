@@ -304,6 +304,33 @@ test("tenant A cannot expose or mutate tenant B resources", async ({ page }) => 
   expect(count).toBe(0);
 });
 
+test("Phase 12: owner can access /onboarding, update profile, and execute CSV import through UI", async ({ page }) => {
+  await login(page, emails.owner);
+  await page.goto("/onboarding");
+  await expect(page.getByText("Closed Beta Readiness Hub")).toBeVisible();
+
+  // Test Profile Save Tab
+  await page.getByRole("button", { name: "⚙️ Shop Profile" }).click();
+  await page.getByLabel("Contact Phone Number").fill("02-999-3333");
+  await page.getByRole("button", { name: "💾 Save Profile Settings" }).click();
+  await expect(page.getByText("Shop profile updated successfully.")).toBeVisible();
+
+  // Verify DB updated
+  const { data: updatedShop } = await admin.from("shops").select("phone").eq("id", shopA).single();
+  expect(updatedShop?.phone).toBe("02-999-3333");
+
+  // Test CSV Import Tab
+  await page.getByRole("button", { name: "📥 CSV Data Import" }).click();
+  await page.getByRole("button", { name: "Load Sample CSV" }).click();
+  await page.getByRole("button", { name: "🔍 Validate & Preview (Zero DB Writes)" }).click();
+  await expect(page.getByText("Validation & Diff Preview")).toBeVisible();
+  await expect(page.getByText("VALID", { exact: false }).first()).toBeVisible();
+
+  // Confirm Import
+  await page.getByRole("button", { name: "Confirm & Import", exact: false }).click();
+  await expect(page.getByText("Import Execution Result")).toBeVisible();
+});
+
 test.afterAll(async () => {
   if (shopA) await admin.from("shops").delete().eq("id", shopA);
   if (shopB) await admin.from("shops").delete().eq("id", shopB);

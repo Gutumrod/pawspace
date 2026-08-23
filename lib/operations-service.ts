@@ -26,7 +26,14 @@ export interface BookingRequestDTO {
 export interface OperationsDTO {
   staff: Pick<StaffContext, "userId" | "shopId" | "name" | "email" | "role" | "shopName" | "shopSlug">;
   businessDate: string;
-  shop: { name: string; slug: string; googleSheetsConnected: boolean; lineConfigured: boolean };
+  shop: {
+    name: string;
+    slug: string;
+    phone: string | null;
+    lineOaId: string | null;
+    googleSheetsConnected: boolean;
+    lineConfigured: boolean;
+  };
   rooms: Array<{ id: string; number: string; type: RoomType; capacity: number; price: number; status: RoomStatus; maintenanceFrom: string | null; maintenanceUntil: string | null }>;
   owners: Array<{ id: string; firstName: string; lastName: string | null; phone: string; emergencyPhone: string | null; address: string | null; lineLinked: boolean }>;
   pets: Array<{ id: string; ownerId: string; name: string; species: "dog" | "cat"; breed: string | null; gender: string | null; birthDate: string | null; weightKg: number | null; specialCareNotes: string | null; allergies: string | null }>;
@@ -52,7 +59,7 @@ export async function getOperationsSnapshot(): Promise<OperationsDTO> {
   if (typeof businessDateResult.data !== "string") throw new Error("Invalid business date response.");
 
   const [shopResult, roomsResult, ownersResult, petsResult, bookingsResult, bookingPetsResult, requestsResult, reportsResult] = await Promise.all([
-    client.from("shops").select("name,slug,google_sheet_id,line_oa_id").eq("id", staff.shopId).single(),
+    client.from("shops").select("name,slug,phone,google_sheet_id,line_oa_id").eq("id", staff.shopId).single(),
     client.from("rooms").select("id,room_number,room_type,capacity_pets,base_price_per_night,status,maintenance_from,maintenance_until").order("room_number"),
     client.from("pet_owners").select("id,first_name,last_name,phone,emergency_phone,address,line_user_id").order("first_name"),
     client.from("pets").select("id,owner_id,name,species,breed,gender,birth_date,weight_kg,special_care_notes,allergies").order("name"),
@@ -88,7 +95,14 @@ export async function getOperationsSnapshot(): Promise<OperationsDTO> {
   return {
     staff: { userId: staff.userId, shopId: staff.shopId, name: staff.name, email: staff.email, role: staff.role, shopName: staff.shopName, shopSlug: staff.shopSlug },
     businessDate: businessDateResult.data,
-    shop: { name: String(shopResult.data.name), slug: String(shopResult.data.slug), googleSheetsConnected: Boolean(shopResult.data.google_sheet_id), lineConfigured: Boolean(shopResult.data.line_oa_id) },
+    shop: {
+      name: String(shopResult.data.name),
+      slug: String(shopResult.data.slug),
+      phone: shopResult.data.phone ? String(shopResult.data.phone) : null,
+      lineOaId: shopResult.data.line_oa_id ? String(shopResult.data.line_oa_id) : null,
+      googleSheetsConnected: Boolean(shopResult.data.google_sheet_id),
+      lineConfigured: Boolean(shopResult.data.line_oa_id),
+    },
     rooms: (roomsResult.data ?? []).map((row) => ({
       id: String(row.id), number: String(row.room_number), type: row.room_type as RoomType,
       capacity: toNumber(row.capacity_pets), price: toNumber(row.base_price_per_night), status: row.status as RoomStatus,

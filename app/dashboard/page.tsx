@@ -1,5 +1,6 @@
-import { getDashboardSummary } from '@/lib/dashboard-service';
+import Link from 'next/link';
 import { redirect } from 'next/navigation';
+import { getDashboardSummary } from '@/lib/dashboard-service';
 
 export const metadata = {
     title: 'PawSpace — Owner & Manager Dashboard',
@@ -20,8 +21,20 @@ export default async function DashboardPage() {
         <div className="dashboard-shell">
             <div className="dashboard-wrap">
                 <header className="dashboard-hero">
-                    <div><div className="dashboard-title-row"><div className="login-mark">P</div><h1 className="dashboard-title">{shop.name}</h1><span className="dashboard-badge">{entitlement.packageName}</span></div><p className="dashboard-copy">Tenant Dashboard · Signed in as <strong>{staff.name}</strong> ({staff.role.toUpperCase()})</p></div>
-                    {entitlement.supportTier && <span className="dashboard-badge blue">Support: {entitlement.supportTier}</span>}
+                    <div>
+                        <div className="dashboard-title-row">
+                            <div className="login-mark">P</div>
+                            <h1 className="dashboard-title">{shop.name}</h1>
+                            <span className="dashboard-badge">{entitlement.packageName}</span>
+                        </div>
+                        <p className="dashboard-copy">Tenant Dashboard · Signed in as <strong>{staff.name}</strong> ({staff.role.toUpperCase()})</p>
+                    </div>
+                    <div style={{ display: "flex", alignItems: "center", gap: "10px", flexWrap: "wrap" }}>
+                        <Link href="/onboarding" className="secondary-button" style={{ display: "inline-flex", alignItems: "center", textDecoration: "none", fontWeight: 700 }}>
+                            🚀 Onboarding Hub
+                        </Link>
+                        {entitlement.supportTier && <span className="dashboard-badge blue">Support: {entitlement.supportTier}</span>}
+                    </div>
                 </header>
                 <section className="dashboard-grid">
                     <article className="dashboard-card"><h2>Room Status</h2><div className="dashboard-mini-grid"><div className="dashboard-stat mint"><span>Available</span><strong>{rooms.available}</strong></div><div className="dashboard-stat"><span>Occupied</span><strong>{rooms.occupied}</strong></div><div className="dashboard-stat peach"><span>Cleaning</span><strong>{rooms.cleaning}</strong></div><div className="dashboard-stat pink"><span>Maintenance</span><strong>{rooms.maintenance}</strong></div></div><p className="dashboard-copy">{rooms.total} rooms total</p></article>

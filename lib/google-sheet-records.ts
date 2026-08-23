@@ -30,25 +30,33 @@ export type BookingSheetRecord = {
   petIds: string[]; petNames: string[]; createdAt: string | null;
 };
 
+// Google Sheets (and Excel) treat a leading =, +, -, or @ as the start of a formula.
+// Tenant-supplied text (typed or CSV-imported) must never reach the sheet unescaped,
+// or a crafted pet/customer field becomes a live formula when the shop owner opens it.
+function escapeSheetFormula(value: string): string {
+  return /^[=+\-@]/.test(value) ? `'${value}` : value;
+}
+
 function cell(value: SheetScalar | undefined): string | number | boolean {
-  return value === null || value === undefined ? "" : value;
+  if (value === null || value === undefined) return "";
+  return typeof value === "string" ? escapeSheetFormula(value) : value;
 }
 
 export function buildCustomerRow(record: PetCustomerRecord): Array<string | number | boolean> {
   return [
-    record.petId, record.petName, record.species, cell(record.breed), cell(record.gender),
+    cell(record.petId), cell(record.petName), cell(record.species), cell(record.breed), cell(record.gender),
     cell(record.birthDate), cell(record.weightKg), cell(record.avatarUrl), cell(record.specialCareNotes),
-    cell(record.allergies), record.ownerId, record.ownerFirstName, cell(record.ownerLastName),
-    record.ownerPhone, cell(record.ownerEmergencyPhone), cell(record.ownerAddress), cell(record.createdAt),
+    cell(record.allergies), cell(record.ownerId), cell(record.ownerFirstName), cell(record.ownerLastName),
+    cell(record.ownerPhone), cell(record.ownerEmergencyPhone), cell(record.ownerAddress), cell(record.createdAt),
   ];
 }
 
 export function buildBookingRow(record: BookingSheetRecord): Array<string | number | boolean> {
   return [
-    record.bookingId, record.ownerId, record.ownerName, record.roomId, record.roomNumber,
-    record.roomType, record.checkInDate, record.checkOutDate, record.bookingStatus,
-    record.totalAmount, cell(record.specialRequests), record.petIds.join(","),
-    record.petNames.join(","), cell(record.createdAt),
+    cell(record.bookingId), cell(record.ownerId), cell(record.ownerName), cell(record.roomId), cell(record.roomNumber),
+    cell(record.roomType), cell(record.checkInDate), cell(record.checkOutDate), cell(record.bookingStatus),
+    record.totalAmount, cell(record.specialRequests), cell(record.petIds.join(",")),
+    cell(record.petNames.join(",")), cell(record.createdAt),
   ];
 }
 
