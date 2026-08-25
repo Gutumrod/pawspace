@@ -281,19 +281,23 @@ DO $$ DECLARE payload jsonb; BEGIN
   END IF;
 END $$;
 
--- Phase 9 represents limits only; existing room mutation remains unrestricted by commercial quota.
+-- Phase 13 intentionally supersedes Phase 9's non-enforcement assumption:
+-- Starter reaches 10 rooms, while room 11 must fail closed.
 SELECT set_config('request.jwt.claim.sub',(SELECT v FROM phase9_values WHERE k='owner_a'),true);
 DO $$
-DECLARE i int; room_count int; entitlement_limit int;
+DECLARE i int; room_count int; entitlement_limit int; denied boolean:=false;
 BEGIN
-  FOR i IN 6..11 LOOP
+  FOR i IN 6..10 LOOP
     PERFORM create_room(('P9-Q'||i)::varchar,'standard'::varchar,1,500::numeric);
   END LOOP;
+  BEGIN
+    PERFORM create_room('P9-Q11'::varchar,'standard'::varchar,1,500::numeric);
+  EXCEPTION WHEN OTHERS THEN denied:=SQLERRM LIKE '%ROOM_QUOTA_EXCEEDED%'; END;
   SELECT COUNT(*) INTO room_count FROM rooms WHERE shop_id=(SELECT v::uuid FROM phase9_values WHERE k='shop_a');
   SELECT room_limit INTO entitlement_limit
   FROM get_shop_effective_entitlement((SELECT v::uuid FROM phase9_values WHERE k='shop_a'));
-  IF entitlement_limit<>10 OR room_count<=entitlement_limit THEN
-    RAISE EXCEPTION 'Starter hard quota was enforced or entitlement limit drifted';
+  IF entitlement_limit<>10 OR room_count<>entitlement_limit OR NOT denied THEN
+    RAISE EXCEPTION 'Phase 13 Starter room quota regression';
   END IF;
 END $$;
 

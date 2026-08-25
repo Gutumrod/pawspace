@@ -29,6 +29,17 @@ export interface DashboardSummaryDTO {
     cameraEnabled: boolean;
   };
   entitlement: EffectiveEntitlement;
+  commercialStatus: {
+    lifecycleStatus: "trialing" | "active" | "past_due" | "grace_period" | "suspended" | "cancel_at_period_end" | "cancelled" | "expired";
+    commercialAccess: boolean;
+    trialEndsAt: string | null;
+    currentPeriodEnd: string | null;
+    gracePeriodEnd: string | null;
+    blockedReason: string | null;
+    roomUsage: number;
+    petUsage: number;
+    foundingMemberContinuityValid: boolean;
+  };
 }
 
 type JsonRecord = Record<string, unknown>;
@@ -67,26 +78,51 @@ function asNullableNumber(value: unknown, label: string): number | null {
 function asNullableString(value: unknown, label: string): string | null {
   return value === null ? null : asString(value, label);
 }
-export async function getDashboardSummary(): Promise<DashboardSummaryDTO> {
-  const { client: supabase } = await requireManagerOrOwnerContext();
-  const { data, error } = await supabase.rpc("get_owner_manager_dashboard_summary");
 
-  if (error || !data) {
+const LIFECYCLE_STATUSES = new Set<DashboardSummaryDTO["commercialStatus"]["lifecycleStatus"]>([
+  "trialing", "active", "past_due", "grace_period", "suspended",
+  "cancel_at_period_end", "cancelled", "expired",
+]);
+
+function asLifecycleStatus(
+  value: unknown,
+  label: string,
+): DashboardSummaryDTO["commercialStatus"]["lifecycleStatus"] {
+  const status = asString(value, label);
+  if (!LIFECYCLE_STATUSES.has(status as DashboardSummaryDTO["commercialStatus"]["lifecycleStatus"])) {
+    throw new Error(`Invalid dashboard payload: ${label}`);
+  }
+  return status as DashboardSummaryDTO["commercialStatus"]["lifecycleStatus"];
+}
+export async function getDashboardSummary(): Promise<DashboardSummaryDTO> {
+  const { client: supabase, staff: tenantStaff } = await requireManagerOrOwnerContext();
+  const [dashboardResult, commercialResult] = await Promise.all([
+    supabase.rpc("get_owner_manager_dashboard_summary"),
+    supabase.rpc("get_shop_commercial_status", { p_shop_id: tenantStaff.shopId }),
+  ]);
+
+  if (dashboardResult.error || !dashboardResult.data) {
     throw new Error(
-      `Failed to load dashboard summary: ${error?.message || "Empty dashboard response"}`,
+      `Failed to load dashboard summary: ${dashboardResult.error?.message || "Empty dashboard response"}`,
+    );
+  }
+  if (commercialResult.error || !commercialResult.data) {
+    throw new Error(
+      `Failed to load commercial status: ${commercialResult.error?.message || "Empty commercial response"}`,
     );
   }
 
-  const root = asRecord(data, "root");
+  const root = asRecord(dashboardResult.data, "root");
+  const commercialStatus = asRecord(commercialResult.data, "commercialStatus");
   const shop = asRecord(root.shop, "shop");
-  const staff = asRecord(root.staff, "staff");
+  const staffPayload = asRecord(root.staff, "staff");
   const rooms = asRecord(root.rooms, "rooms");
   const bookings = asRecord(root.bookings, "bookings");
   const dailyReports = asRecord(root.dailyReports, "dailyReports");
   const integrations = asRecord(root.integrations, "integrations");
   const entitlement = asRecord(root.entitlement, "entitlement");
 
-  const staffRole = asString(staff.role, "staff.role");
+  const staffRole = asString(staffPayload.role, "staff.role");
   if (staffRole !== "owner" && staffRole !== "manager") {
     throw new Error("Invalid dashboard payload: unauthorized staff role");
   }
@@ -110,8 +146,8 @@ export async function getDashboardSummary(): Promise<DashboardSummaryDTO> {
       slug: asString(shop.slug, "shop.slug"),
     },
     staff: {
-      id: asString(staff.id, "staff.id"),
-      name: asString(staff.name, "staff.name"),
+      id: asString(staffPayload.id, "staff.id"),
+      name: asString(staffPayload.name, "staff.name"),
       role: staffRole,
     },
     rooms: {
@@ -138,6 +174,17 @@ export async function getDashboardSummary(): Promise<DashboardSummaryDTO> {
         "integrations.googleSheetsEnabled",
       ),
       cameraEnabled: asBoolean(integrations.cameraEnabled, "integrations.cameraEnabled"),
+    },
+    commercialStatus: {
+      lifecycleStatus: asLifecycleStatus(commercialStatus.lifecycle_status, "commercialStatus.lifecycle_status"),
+      commercialAccess: asBoolean(commercialStatus.commercial_access, "commercialStatus.commercial_access"),
+      trialEndsAt: asNullableString(commercialStatus.trial_ends_at, "commercialStatus.trial_ends_at"),
+      currentPeriodEnd: asNullableString(commercialStatus.current_period_end, "commercialStatus.current_period_end"),
+      gracePeriodEnd: asNullableString(commercialStatus.grace_period_end, "commercialStatus.grace_period_end"),
+      blockedReason: asNullableString(commercialStatus.blocked_reason, "commercialStatus.blocked_reason"),
+      roomUsage: asNumber(commercialStatus.current_room_usage, "commercialStatus.current_room_usage"),
+      petUsage: asNumber(commercialStatus.current_pet_usage, "commercialStatus.current_pet_usage"),
+      foundingMemberContinuityValid: asBoolean(commercialStatus.founding_member_continuity_valid, "commercialStatus.founding_member_continuity_valid"),
     },
     entitlement: {
       packageId: asString(entitlement.package_id, "entitlement.package_id"),
