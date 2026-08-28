@@ -1,4 +1,4 @@
-# 💼 PawSpace — Business Model & Monetization Strategy
+# 💼 Pawstia PMS — Business Model & Monetization Strategy
 
 > **Document Status:** Aligned & Reality-Checked (Single Source of Truth)
 > **Target Market (V1):** Pet Hotels & Pet Daycare Centers (Single-Location Focus)
@@ -17,7 +17,7 @@
 
 | แพ็กเกจ | ราคาต่อเดือน | ราคาต่อปี (ประหยัด 2 เดือน) | สิทธิ์ที่ได้รับใน V1 ปัจจุบัน (Single-Store) | จังหวะการจำกัดสิทธิ์ (Enforcement Timing) |
 | :--- | :--- | :--- | :--- | :--- |
-| **Starter** | **990 บ. / ด.** | 9,900 บ. / ปี | สูงสุด 10 ห้องพัก, ประวัติสัตว์เลี้ยง 300 ตัว, ส่ง Daily Report LINE, ซิงก์ Google Sheets | **เริ่มล็อกโควตาใน Phase 3** *(ช่วง Beta ใช้ได้ไม่จำกัด)* |
+| **Starter** | **990 บ. / ด.** | 9,900 บ. / ปี | สูงสุด 10 ห้องพัก, ประวัติสัตว์เลี้ยง 300 ตัว, ส่ง Daily Report LINE, ซิงก์ Google Sheets | **Implemented at authoritative DB boundaries in Engineering Phase 13** |
 | **Pro** 🌟 | **1,490 บ. / ด.** | 14,900 บ. / ปี | ห้องพักไม่จำกัด, ประวัติสัตว์เลี้ยงไม่จำกัด, ส่ง Daily Report LINE, ซิงก์ Google Sheets | ใช้งานได้ไม่จำกัด |
 | **Enterprise (Single-Store Pro Plus)** | **2,490 บ. / ด.** | 24,900 บ. / ปี | บัญชีพนักงานไม่จำกัด, ข้อตกลง SLA ตอบกลับด่วนพิเศษ (Priority Support) | ใช้งานได้ไม่จำกัด |
 
@@ -36,10 +36,10 @@
 
 ### แผนบริการเสริมและฟีเจอร์ระยะยาว (Planned Add-ons & Future Horizons)
 
-* **Google Drive Photo Backup (Phase 2):** แบ็กอัปรูปสัตว์เลี้ยงลง Google Drive ของร้าน
-* **SlipOK & Auto e-Tax (Phase 3):** ระบบตรวจสลิปโอนเงินอัตโนมัติและออกใบเสร็จ
-* **Live Camera Stream Pass (Phase 3–4):** ปลดล็อกลิงก์กล้องสดห้องพักสัตว์เลี้ยง
-* **Multi-Branch Control Module (Phase 4):** แดชบอร์ดรวมและระบบจัดการหลายสาขาสำหรับธุรกิจที่มีหลายสาขา
+* **Google Drive Photo Backup (future commercial stage):** แบ็กอัปรูปสัตว์เลี้ยงลง Google Drive ของร้าน
+* **SlipOK & Auto e-Tax (future paid-launch/add-on stage; not implemented):** ระบบตรวจสลิปโอนเงินอัตโนมัติและออกใบเสร็จ
+* **Advanced Camera Add-on (future expansion):** bounded visitor camera access already exists; broader paid multi-camera/RTSP-HLS capability remains future work
+* **Multi-Branch Control Module (future expansion):** แดชบอร์ดรวมและระบบจัดการหลายสาขาสำหรับธุรกิจที่มีหลายสาขา
 
 ---
 
@@ -47,10 +47,10 @@
 
 | รายการสมมติฐาน (Hypothesis) | ตัวเลขที่ตั้งเป้าไว้ | วิธีการทดสอบและเก็บข้อมูลจริง (Validation Method) |
 | :--- | :--- | :--- |
-| **H1: Market Pain Intensity** | ร้านค้าส่วนใหญ่ยังใช้สมุด/Excel และพบปัญหาห้องชน/ส่งรูปยาก | สัมภาษณ์เชิงลึกกับ 30 ร้านค้าใน Phase 2 Outreach |
+| **H1: Market Pain Intensity** | ร้านค้าส่วนใหญ่ยังใช้สมุด/Excel และพบปัญหาห้องชน/ส่งรูปยาก | สัมภาษณ์เชิงลึกกับ 30 ร้านค้าใน Commercial Stage B outreach |
 | **H2: Trial to Paid Conversion** | ร้านค้าที่ทดลองใช้ฟรี 30 วัน จะต่ออายุแบบจ่ายเงิน > 40% | วัดผล Conversion Rate เมื่อครบช่วงทดลองใช้งานฟรี |
 | **H3: Willingness to Pay** | ราคา 990–1,490 บ./ด. เป็นราคาที่ร้านค้าตัดสินใจจ่ายได้ทันที | เสนอราคาช่วงท้ายของ Beta Test เพื่อดูอัตราการตอบรับ |
-| **H4: B2C Add-on Revenue** | เจ้าของสัตว์ยินดีจ่ายค่าบริการเสริมเมื่อเปิดใช้งาน | เปิดฟังก์ชันให้เจ้าของสัตว์กดซื้อใน Phase 3–4 เพื่อวัด Take-up Rate |
+| **H4: B2C Add-on Revenue** | เจ้าของสัตว์ยินดีจ่ายค่าบริการเสริมเมื่อเปิดใช้งาน | เปิดฟังก์ชันให้เจ้าของสัตว์กดซื้อใน Commercial Stage C–D เพื่อวัด Take-up Rate |
 
 ---
 

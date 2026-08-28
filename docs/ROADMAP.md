@@ -1,68 +1,97 @@
-# 🗺️ PawSpace — Product Roadmap & Execution Milestones
+# 🗺️ Pawstia PMS — Product Roadmap & Execution Milestones
 
-> **Document Status:** Locked & Harmonized with PRD Invariants
-> **Execution Strategy:** Build Core Loop First ➔ Validate with Pilot Stores ➔ Monetize & Gate ➔ Expand
-
----
-
-## 🎯 ไทม์ไลน์ภาพรวม (Phase Overview)
-
-```
-[Sprint 1–2 (2 สัปดาห์)] ───► [Sprint 3 (สัปดาห์ 3)] ───► [Sprint 4 (สัปดาห์ 4)] ───► [Month 2+]
-   Phase 1: Lean MVP            Phase 2: Closed Beta        Phase 3: Monetization       Phase 4: Expansion
-(P0-A, P0-B, P0-C Core)        (Pilot 5-10 Pet Hotels)     (Subscription + Paywall)    (Grooming, Vaccine, Cam)
-```
+> **Document Status:** Reconciled 2026-08-28
+> **Brand:** Commercial candidate `Pawstia PMS`; internal repository identity remains `PawSpace` / `PS01`.
+> **Numbering rule:** **Engineering Phase** and **Commercial Stage** are different systems. Never use `Phase 1–4` for commercial stages again.
 
 ---
 
-## 📅 รายละเอียดการดำเนินงานรายเฟส
+## 1. Current engineering baseline
 
-### 🚀 Phase 1: Lean MVP (สัปดาห์ที่ 1–2) — *Focus: The Core Daily Loop*
-* **เป้าหมาย:** สร้างระบบพื้นฐานที่ตอบโจทย์ The Core Daily Loop ตามสัญญา Product Decisions 10 ข้ออย่างเคร่งครัด
-* **สิ่งที่ส่งมอบ (Deliverables):**
-  1. **Shop Setup & Staff Auth (Decision 7A & 8A):**
-     * Supabase Auth Email/Password + Lean 2-Tier RLS Matrix (`owner/manager` vs `staff`)
-     * ตั้งค่าประเภทห้อง, ความจุ (`capacity_pets`), ราคา, และช่วงปิดปรับปรุง (`maintenance_from/until`)
-  2. **Room Matrix & Strict Booking Engine (Decision 1A, 2A, 3A, 4A):**
-     * ผังห้องพักแสดงสถานะ (Available, Occupied, Cleaning, Maintenance)
-     * ระบบจองพร้อม PostgreSQL GiST Exclusion Constraint ป้องกันห้องชน
-     * RPC `add_pet_to_booking` บังคับ Invariants: เจ้าของเดียวกัน (1A), สัตว์เลี้ยงไม่จองซ้อน (2A), ไม่ทับช่วง Maintenance (4A), และคุมความจุห้องด้วย Row Lock
-     * State Machine สำหรับการเช็คอิน/เช็คเอาท์/ยกเลิก (3A)
-     * Verified LIFF Claim Flow ผูก LINE (TTL 48h + Re-link) (6A)
-  3. **1-Click Daily Care Report via LINE (Decision 5A):**
-     * พี่เลี้ยงอัปโหลดรูป 1–4 รูป (`cardinality BETWEEN 1 AND 4`) + ติ๊กสถานะ อาหาร (4 ระดับ)/ขับถ่าย/อารมณ์ + Note
-     * รองรับการส่งหลายครั้งต่อวัน พร้อมระบบป้องกันการกดซ้ำ (`idempotency_key`)
-     * จัดเก็บรูปใน Storage Bucket `daily-report-photos` (Public CDN Read) แสดงผลในการ์ด LINE Flex Message ได้ตลอดอายุการใช้งานตาม Retention Policy (พร้อม Dual Idempotency & X-Line-Retry-Key)
-  4. **Pet-Centric Google Sheets Sync (Decision 9A):**
-     * ซิงก์สำเนา One-way Replica ลง Google Sheets ของร้านค้าโดยใช้ `Record_ID = pet_id` ใน Column A
-     * มีตาราง `sync_queue` สำรองข้อมูลกรณี API ขัดข้อง
+| Engineering execution | Current state |
+|---|---|
+| Phase 1–3 | CLOSED — foundation, authoritative DB/RLS/auth/tenant boundaries |
+| Phase 4–6 | CLOSED — booking backend, LINE claim, Daily Report + LINE delivery |
+| Phase 7–9 | CLOSED — Google Sheets sync, bounded visitor camera, entitlements/dashboard |
+| Phase 10 | CLOSED — live operations UI + browser E2E |
+| Design Implementation Pass | CLOSED |
+| Phase 11 / 11.1 | CLOSED — customer LIFF booking + design alignment |
+| Phase 12 | CLOSED — onboarding/import/Closed Beta technical readiness |
+| Phase 13 | **IMPLEMENTED / COMMITTED — FINAL RE-VERIFICATION PENDING** |
+| Payment collection | **NOT IMPLEMENTED** |
+| Production deployment | **NOT VERIFIED / NOT LAUNCHED** |
+
+Phase 13 must not be marked CLOSED until its mandatory lifecycle/quota/concurrency/regression matrix is rerun and `PHASE13_IMPLEMENTATION_EVIDENCE.md` exists.
+
+---
+## 2. Commercial roadmap
+
+### Stage A — Core Product
+Goal: make the daily operating loop trustworthy.
+
+Scope now implemented:
+- tenant/staff auth and authoritative mutation boundaries;
+- room matrix, booking, check-in/out, cleaning and maintenance lifecycle;
+- customer/pet CRM;
+- Daily Care Report with media + LINE delivery;
+- Google Sheets one-way export replica;
+- customer self-booking via LIFF;
+- onboarding/import flow;
+- owner/manager dashboard;
+- subscription/entitlement foundation.
+
+### Stage B — Closed Beta
+Goal: validate Pawstia PMS with real pet hotels before charging broadly.
+
+Execution:
+1. Start with 1 real store, then 3, 5, and 10.
+2. Measure onboarding time, booking failures, LINE delivery success, Sheets sync failures, staff learning curve, support burden, and Daily Report usage.
+3. Validate pricing/willingness-to-pay and Founding Member conversion assumptions.
+4. Fix operational friction before payment automation.
+
+Do not call technical `PILOT READY` the same thing as successful real-world beta validation.
+
+### Stage C — Paid Launch
+Prerequisites:
+- Phase 13 independently closed;
+- payment collection integrated through the same authoritative subscription transition domain;
+- trial/upgrade/downgrade/suspension/reactivation commercial rules finalized;
+- staging and production deployment contracts;
+- monitoring, backup/restore drill, incident response, and support process;
+- Terms/Privacy/DPA/subprocessor review;
+- final brand/channel decision.
+
+Payment webhooks must never write raw subscription state directly.
+
+### Stage D — Expansion
+Only after real beta/paid usage supports the investment:
+- advanced multi-branch control;
+- grooming workflow;
+- vaccine/recall automation;
+- advanced RTSP/HLS multi-camera capabilities;
+- other paid add-ons validated from customer demand.
 
 ---
 
-### 🧪 Phase 2: Closed Beta & Real-World Validation (สัปดาห์ที่ 3)
-* **เป้าหมาย:** นำระบบไปให้โรงแรมสัตว์เลี้ยงจริง 5–10 ร้านทดลองใช้งานเพื่อเก็บ Feedback
-* **สิ่งที่ส่งมอบ (Deliverables):**
-  1. **Direct Outreach:** ทักหาโรงแรมหมาแมว 30 ร้านใน กทม./ปริมณฑล มอบสิทธิ์ทดลองใช้ฟรี 30 วัน พร้อมฟรีบริการช่วยจัดผังห้องและนำเข้าข้อมูลเดิม
-  2. **White-Glove Onboarding:** ช่วยร้านนำเข้ารายชื่อลูกค้าเดิมและผังห้องลงระบบ
-  3. **Google Drive Photo Backup:** เพิ่มระบบแบ็กอัปรูปสัตว์เลี้ยงแยกโฟลเดอร์ลง Google Drive ของร้าน
-  4. **UX Polishing:** ปรับจูน UI หน้าร้านบน iPad ให้พนักงานกดง่ายที่สุดตามฟีดแบ็กจริง
+## 3. Immediate execution order
+
+1. Documentation reconciliation — **this pass**
+2. Phase 13 final executable verification
+3. Staging + production-readiness implementation
+4. Real-store Closed Beta
+5. Payment integration and Paid Launch gate
+6. Expansion only from validated demand
 
 ---
 
-### 💰 Phase 3: Commercial Launch & Monetization (สัปดาห์ที่ 4)
-* **เป้าหมาย:** เปิดระบบรับชำระเงินและเริ่มบังคับใช้ Feature Limit ตามแพ็กเกจ (Decision 10A)
-* **สิ่งที่ส่งมอบ (Deliverables):**
-  1. **Billing & Subscription Paywall:** ระบบตัดเงินรายเดือน/รายปี (Starter 990 บ. / Pro 1,490 บ.)
-  2. **Feature Gating Enforcement:** เริ่มล็อกโควตาห้องและสัตว์เลี้ยงสำหรับแพ็กเกจ Starter (10 ห้อง / 300 สัตว์เลี้ยง)
-  3. **PromptPay QR & SlipOK Verification:** ระบบสร้าง QR สแกนจ่ายและตรวจสลิปโอนเงินปลอมอัตโนมัติ
-  4. **B2B2C Add-on Pilot:** ทดสอบขายป้ายชื่อ Smart Tag และทดลองเปิดฟังก์ชันแชร์ลิงก์กล้องของห้องพัก (Third-party Cam Sharing)
+## 4. Verification environment decision
 
----
+Do **not** require Docker Desktop on the Windows PC for Phase 13 verification.
 
-### 📈 Phase 4: Long-Term Expansion (เดือนที่ 2 เป็นต้นไป)
-* **เป้าหมาย:** สเกลสู่ 50–100 ร้าน และขยายโมดูลเฉพาะทาง
-* **สิ่งที่ส่งมอบ (Deliverables):**
-  1. **Multi-Branch Control Module:** แดชบอร์ดรวมและระบบจัดการหลายสาขาสำหรับธุรกิจที่มีหลายสาขา
-  2. **Grooming Queue Module:** ระบบคิวอาบน้ำตัดขนและคำนวณค่าคอมมิชชั่นช่าง
-  3. **Vaccine Auto-Recall Engine:** บอทเตือนฉีดวัคซีนและหยอดยาเห็บหมัดเข้า LINE เจ้าของล่วงหน้า
-  4. **Live RTSP/HLS Camera Bridge:** ระบบสตรีมมิ่งกล้องสดฝังในแอป
+Preferred order:
+1. **GitHub Actions ephemeral Ubuntu runner** — run the Supabase local stack and database/TS regression suites away from the Windows PC.
+2. **Isolated Supabase cloud staging/test project** — use for remote integration/E2E and deployment validation, never production data.
+3. macOS local Supabase/Docker stack when the Mac is available and stable.
+4. Windows Docker only after the machine stability issue is intentionally resolved.
+
+Production data must never be used as a substitute for the test environment.

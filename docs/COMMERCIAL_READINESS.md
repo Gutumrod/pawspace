@@ -1,4 +1,4 @@
-# PawSpace — Commercial Readiness Checklist
+# Pawstia PMS — Commercial Readiness Checklist
 
 > Purpose: Track transition from Closed Beta SaaS to commercial SaaS.
 
@@ -45,9 +45,10 @@
 
 ## Brand
 
-- [ ] Product name availability confirmed.
-- [ ] Domain ownership confirmed.
-- [ ] Official communication channels confirmed.
+- [x] Commercial-name candidate locked: **Pawstia PMS** (initial public collision screening passed; not a substitute for formal legal clearance).
+- [ ] Formal trademark/legal clearance completed for launch jurisdictions/classes.
+- [ ] Production web address/routing confirmed.
+- [ ] Official communication channels confirmed and claimed.
 
 ## Launch Decision
 

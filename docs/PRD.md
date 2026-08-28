@@ -1,7 +1,8 @@
-# 📋 PawSpace — Product Requirement Document (PRD) (V1 Lean MVP)
+# 📋 Pawstia PMS — Product Requirement Document (PRD) (V1 Lean MVP)
 
 > **Document Status:** Authoritative Target Contract (Final Hardened Edition)
 > **Product Scope:** Pet Hotel & Pet Daycare Management OS (Single-Store Focus)
+> **Brand identity:** Commercial candidate `Pawstia PMS`; legacy/internal repository identity remains `PawSpace` / `PS01` pending a dedicated brand-migration pass.
 > **Target Release:** Sprint 1–2 (Lean MVP)
 > **Authored By:** Antigravity (for CEO: Khun Free)
 
@@ -10,7 +11,7 @@
 ## 1. ปัญหาและตำแหน่งผลิตภัณฑ์ (Problem & Positioning)
 
 ### นิยามตำแหน่งผลิตภัณฑ์ (Authoritative Positioning Statement)
-> **"PawSpace คือ Pet Hotel OS ที่จัดการห้อง การเข้าพัก และ Daily Care Report ผ่าน LINE โดยร้านยังมีสำเนาส่งออกของข้อมูลลูกค้าและรายการจองอยู่ใน Google Sheets"**
+> **"Pawstia PMS คือ Pet Hotel OS ที่จัดการห้อง การเข้าพัก และ Daily Care Report ผ่าน LINE โดยร้านยังมีสำเนาส่งออกของข้อมูลลูกค้าและรายการจองอยู่ใน Google Sheets"**
 
 ### ปัญหาหลักที่แก้ใน V1:
 1. **การจองห้องชนกัน (Double Booking):** การจดลงสมุดหรือ Excel เสี่ยงต่อการรับสัตว์เลี้ยงซ้ำห้องในช่วงเทศกาล
@@ -29,10 +30,10 @@
 ### 🚫 สิ่งที่อยู่นอกขอบเขต V1 อย่างเด็ดขาด (Explicit Non-Goals)
 1. **ไม่ทำระบบคลินิกรักษา/คลังยา (Clinic & Pharmacy):** เป็น Medical workflow ที่ซับซ้อนเกินไป
 2. **ไม่ทำระบบคิวกรูมมิ่ง (Grooming Queue):** กรูมมิ่งเป็นเรื่อง Resource/Stylist Scheduling คนละแบบกับ Room Matrix
-3. **ไม่ทำระบบตรวจสลิป/บิลอัตโนมัติ (SlipOK / Billing Automation / e-Tax):** ยกไป Phase 3 หลัง Core Loop นิ่ง
-4. **ไม่ทำ Google Drive Photo Sync ใน V1:** เก็บรูปใน Supabase Storage Bucket ก่อนใน MVP ยก Google Drive ไป Phase 2
-5. **ไม่ทำ Digital Pet Passport & Live Camera Stream:** ยกไป Phase 3–4
-6. **ไม่ทำระบบควบคุมหลายสาขา (Multi-Branch Control):** รองรับเฉพาะร้านสาขาเดี่ยวใน V1 ยก Multi-Branch ไป Phase 4
+3. **ไม่ทำระบบตรวจสลิป/บิลอัตโนมัติ (SlipOK / Billing Automation / e-Tax):** ยกไป future paid-launch/add-on stage หลัง Core Loop นิ่ง
+4. **ไม่ทำ Google Drive Photo Sync ใน V1:** เก็บรูปใน Supabase Storage Bucket ก่อนใน MVP Google Drive ยังเป็น future commercial-stage capability
+5. **ไม่ทำ Digital Pet Passport และ Full RTSP/HLS Multi-Camera Platform ใน V1:** Engineering Phase 8 มี bounded visitor-camera access แบบ tenant-scoped แล้ว; advanced multi-camera streaming/bridge ยังเป็น future expansion
+6. **ไม่ทำระบบควบคุมหลายสาขา (Multi-Branch Control):** รองรับเฉพาะร้านสาขาเดี่ยวใน V1 Multi-Branch ยังเป็น future expansion
 
 ---
 
@@ -174,6 +175,6 @@
 * Worker ใช้ `shops.google_sheet_id` ของ tenant และ Service Account จาก trusted secret/Vault; ห้ามใช้ global sheet target ใน production
 * V1 worker concurrency = 1; claim ตาม retry/queue order, มี processing lease + stale recovery + bounded backoff, และทุก event re-read source-of-truth ก่อนเขียน Sheet; UPSERT ของ Pet ที่ถูกลบแล้วต้อง converge เป็น DELETE
 #### 11. Pricing & Feature Gating Enforcement (Decision 10A & C2)
-* **Phase 1 (MVP) & Phase 2 (Closed Beta):** ไม่บังคับใช้ Hard Limit บนจำนวนห้องพักหรือสัตว์เลี้ยงในโค้ด
-* **Phase 3 (Commercial Launch):** เริ่มบังคับใช้ Feature Limit ตามแพ็กเกจ (Starter: 10 ห้อง / 300 สัตว์เลี้ยง vs Pro: ไม่จำกัด)
+* **Historical commercial-stage intent:** ช่วงก่อน monetization เคยไม่บังคับ hard quota
+* **Current implementation (Engineering Phase 13):** บังคับ authoritative quota แล้วที่ database boundary — Starter: 10 ห้อง / 300 pet records; Pro/Enterprise/valid Founding Member: unlimited
 * **Decision C2:** Founding Member 10 ร้านแรก ได้รับสิทธิ์ **Pro Entitlement @ 990 บ./ด. ตลอดชีพ** ตราบเท่าที่ต่ออายุต่อเนื่อง (Non-transferable และไม่รวม Future Paid Add-ons)

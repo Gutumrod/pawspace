@@ -1,103 +1,130 @@
-# 📊 PawSpace — Current Implementation Status & Codebase Reality
+# 📊 Pawstia PMS — Current Implementation Status & Codebase Reality
 
-> **Last Verified:** 2026-08-21 (Phase 1-6 SQL/service suites executed for real by Claude against a local Supabase/Postgres instance — not a static review. Phase 3 findings from an independent reviewer (ChatGPT Gate 1) were confirmed by direct code inspection before being fixed. Phase 4's report matched exactly on re-run. Phase 5's test file was incomplete as delivered (`run()` never closed/called) and was completed by Claude before it could run. Phase 6's implementation matched the report's claims exactly on code review, but the delivered test suite could not actually execute as delivered either: `lib/daily-report-media.ts`, `lib/daily-report-storage.ts`, and `lib/line-transport.ts` all had an `import "server-only"` guard despite none of the three touching secrets/env vars directly (they receive credentials as parameters) - that package throws unconditionally outside Next.js's build system, so the test crashed on the first import. Claude removed the guard from all three, matching the established Phase 5 precedent (`lib/line-claim-core.ts` has no guard; only the actual secret-handling `lib/line-claim-server.ts` does), then ran the now-working suite for real.)
+> **Last reconciled:** 2026-08-28
 > **Repository:** `Gutumrod/pawspace`
-> **Branch:** `master`
-> **Current Stage:** Phase 1-6 database/RPC/RLS/auth/booking/LINE-claim/daily-report-delivery layer implemented and executable-test-verified. Server-action layer for auth/staff management (`lib/auth.ts`, `app/actions/staff.ts`) fixed and typecheck/lint/build-verified but has no automated end-to-end test - see gap noted below (tracked as issue #3). Application UI layer still preview/stub. This closes the "Chat 2: Phase 4-6" partition per AGENTS.md / HANDOFF-phase1-3-to-phase4-6.md; Phase 7-9 scope is not yet defined anywhere in the repo - do not assume it before a new handoff specifies it.
-> **Architecture Review Gate:** **PHASE 1-6 BACKEND LAYER VERIFIED — SERVER-ACTION E2E TEST COVERAGE GAP OPEN (issue #3) — PHASE 7-9 SCOPE NOT YET DEFINED**
->
-> **2026-08-23 update (post Phase 12 final review + pre-push Gate 2):** Phase 12 Pilot Onboarding & Closed Beta Readiness passed independent final review from baseline `a0c8b54`. The onboarding flow now covers authoritative shop-profile mutation, room/staff setup, fail-closed CSV preview/import, atomic customer/pet import with persistent audit receipts, and deterministic Technical PILOT READY checks for LINE + Google Sheets runtime prerequisites. That review's evidence: Phase 12 **88/88**, browser E2E **9/9**, Phase 3/4/5/6/7/8/9/11 regressions all pass, clean DB reset/lint and static gates pass. Before commit/push, a second independent pass found two real gaps the 88/88 run didn't cover - `normalizePhone` leaking a `+` for non-Thai international numbers (could abort a whole atomic import batch after a clean preview) and CSV-imported free text reaching live Google Sheets sync with no formula-injection escaping (the reported "1/1 PASS" only tested the standalone serializer, not the real data path). Both fixed and re-verified: Phase 12 **92/92**, Phase 7 **23/23**, Phase 11 **45/45**, tsc/lint/build/`git diff --check`/`supabase db lint` all clean on a fresh reset. See `REVIEW-phase12-final-2026-08-23.md` and `PHASE12_IMPLEMENTATION_EVIDENCE.md` §0. GitHub Issue #2 remains a separate business/outreach blocker.
->
-> **2026-08-23 update (post Phase 11.1):** Phase 11 customer self-booking via LINE LIFF passed independent review; Phase 11.1 LIFF design alignment passed independent Gate 2 and is committed at `1b5e7b9`. Phase 10 browser E2E provides executable coverage for the former server-action gap tracked by GitHub Issue #3. The repository now uses a cross-platform Node E2E launcher (`scripts/phase10-e2e.mjs`) so `pnpm test:e2e` does not require PowerShell on macOS. Brand-name collision risk remains tracked separately in GitHub Issue #2 and must be resolved before Closed Beta outreach/public launch.
->
-> **2026-08-21 update (post Phase 10):** The paragraph above is a frozen historical record of the Phase 1-6 gate and is left as-is. Phases 7 (Google Sheets sync), 8 (public camera access), 9 (owner/manager dashboard + commercial entitlements), and 10 (pilot readiness: live operations UI + Playwright/Chromium E2E harness) have since been implemented and independently reviewer-verified — see `REVIEW-phase9-gate1-rerun3-2026-08-21.md` and `REVIEW-phase10-gate1-2026-08-21.md`. **GitHub Issue #3 is now CLOSED**: `tests/e2e/phase10-pilot.spec.ts` proves the exact acceptance the issue required over real HTTP/browser runtime — owner/manager/staff/inactive/no-membership login enforcement at the server boundary, and `inviteStaffAction`'s no-password branch calling `inviteUserByEmail()` end-to-end (real Mailpit-delivered `/auth/v1/verify?...type=invite...` link consumed by `app/auth/accept-invite/page.tsx`, password set, login succeeds, then `removeStaffAction` revokes both DB membership and the Supabase Auth account). See `REVIEW-phase10-gate1-2026-08-21.md` for the full evidence.
+> **Internal product ID:** `PS01`
+> **Current HEAD at reconciliation:** `2810472`
+> **Commercial brand candidate:** `Pawstia PMS — Pet Management System by WSTERA`
+> **Rule:** This file reports current reality only. Historical phase claims belong in `PHASE*_IMPLEMENTATION_EVIDENCE.md`, `REVIEW-*.md`, and handoff files.
 
 ---
 
-## Status Legend
+## 1. Current gate status
 
-* **`DOCUMENTED`** — Requirement/SQL contract ถูกนิยามใน PRD + SYSTEM_ARCHITECTURE แต่ยังไม่อยู่ใน migration ปัจจุบัน
-* **`SCHEMA IMPLEMENTED`** — มี SQL อยู่ใน migration ปัจจุบัน
-* **`UI PREVIEW`** — UI/interaction ใช้ mock data
-* **`CODE FOUNDATION`** — มี project/helper/type foundation
-* **`ADAPTER/STUB`** — มี interface/payload mock แต่ยังไม่มี live transport
-* **`LIVE INTEGRATION`** — ต่อ third-party/database จริง
-* **`VERIFIED`** — ผ่าน executable tests ที่รันจริงกับฐานข้อมูลจริงแล้ว (มีบันทึกผลรันจริงแนบ ไม่ใช่แค่มีไฟล์ test หรือรายงานจาก Agent)
+| Area | Status | Reality |
+|---|---|---|
+| Engineering Phase 1–12 | **CLOSED / previously reviewer-verified** | Dedicated evidence/review files exist for the delivered phases |
+| Engineering Phase 13 | **IMPLEMENTED — RE-VERIFICATION REQUIRED** | Committed at `97c9fd6`; lifecycle, entitlement, quotas, audit, and commercial mutation enforcement exist |
+| Phase 13 evidence | **MISSING FINAL EVIDENCE** | `PHASE13_IMPLEMENTATION_EVIDENCE.md` does not yet exist |
+| Payment collection | **NOT IMPLEMENTED** | No Stripe/PromptPay/SlipOK/payment provider contract |
+| Production deployment | **NOT VERIFIED** | No commercial-production gate has been closed |
+| Closed Beta business validation | **NOT COMPLETED** | Technical readiness is not evidence of real-store adoption |
+| Brand | **CANDIDATE LOCKED** | `Pawstia PMS`; internal identifiers remain `PawSpace` / `PS01` for now |
+
+---
+## 2. Implemented product capabilities
+
+- Supabase Auth + tenant/staff authorization and hardened RLS/RPC boundaries.
+- Room setup, room status, maintenance, booking, pet assignment, check-in/out, and cleaning lifecycle.
+- Customer/pet CRM and guarded ownership mutations.
+- Daily Care Report media pipeline, storage, delivery queue, LINE transport and retry semantics.
+- Verified LINE identity claim flow.
+- Google Sheets proof-of-control binding, one-way export replica and worker.
+- Bounded tenant-scoped visitor camera access.
+- Owner/manager dashboard and commercial entitlement visibility.
+- Customer self-booking through LINE LIFF.
+- Pilot onboarding, CSV preview/import, authoritative import audit and integration-readiness checks.
+- Subscription lifecycle + commercial access authority + append-only subscription audit.
+- Starter hard quotas: 10 rooms / 300 current pet records; Pro/Enterprise/valid Founding Member unlimited.
 
 ---
 
-## Repository vs Target Architecture Reality
+## 3. Phase 13 reality
 
-| Component | Current Status | Reality |
-| :--- | :---: | :--- |
-| Application Foundation | `CODE FOUNDATION` | Next.js 16.3.1, React 19, Tailwind, TypeScript, pnpm |
-| Operations Dashboard | `UI PREVIEW` | KPI / Room Matrix / Daily Report Drawer / Activity Feed ยังใช้ mock preview ไม่ได้ต่อกับ RPC layer ด้านล่างนี้จริง |
-| Database Schema (Phase 1 + Phase 2) | `VERIFIED` | `supabase/migrations/20260220000000_initial_schema.sql` + `20260820020000_phase2_authoritative_gateways.sql` ทั้งคู่ apply สำเร็จบน Postgres 17.6.1.106 จริง (`supabase db reset`, `supabase db lint --local` → no schema errors) |
-| Phase 1 Negative Tests (`phase1_schema.sql`) | `VERIFIED` | รันจริงกับ migration 1 แบบแยกเดี่ยว: ครบ 13 assertion ผ่านหมด รวมถึงยืนยันว่า Phase 2 ไม่หลุดเข้ามาใน migration 1 จริง |
-| Phase 2 RPC/RLS Negative Tests (`phase2_rpc_rls.sql`) | `VERIFIED` | รันจริงกับ migration รวม: function ครบ 19 ตัว, ไม่มี DML grant หลุดให้ `authenticated`, direct-INSERT ถูก block จริง, cross-tenant/wrong-owner ถูกปฏิเสธจริง, capacity/transfer/state-machine/immutable owner_id ผ่านจริง, forced-outbox-failure rollback จริง, disabled-staff เสีย RLS visibility จริง — exit 0, ตรวจ container log แล้วไม่มี crash |
-| Same-Pet Overlap Concurrency | `VERIFIED` | รัน 2 worker พร้อมกันจริงผ่านคนละ DB session: 1 คำขอสำเร็จ อีกคำขอโดน `Pet Conflict` จริง, verify เหลือ assignment แถวเดียวจริง |
-| Daily Report Duplicate Idempotency Concurrency | `VERIFIED` | รัน `create_daily_report` เดียวกัน (idempotency key เดียวกัน) พร้อมกัน 2 session จริง: ทั้งคู่ได้ `report_id` เดียวกันจริง |
-| Daily Report vs Checkout Race | `VERIFIED` | รัน checkout (`update_booking_status → checked_out`) แข่งกับ `create_daily_report` จริงผ่าน `FOR UPDATE` + `pg_sleep`: checkout ชนะจริง, report ที่ตามหลังถูก reject จริงด้วย "Booking is currently checked_out", ไม่มี stale report ถูก commit |
-| Booking Gateways (`create_booking`, schedule/status RPCs) | `VERIFIED` | ครอบคลุมโดย `phase2_rpc_rls.sql` ด้านบน |
-| Pet Assignment Concurrency (`add_pet_to_booking`, `remove_pet_from_booking`) | `VERIFIED` | ครอบคลุมโดย same-pet concurrency test ด้านบน |
-| Phase 4 Booking Backend Service (`lib/booking-service.ts`) | `VERIFIED` | RPC-only wrapper (create/reschedule/status/pet-add-remove/room-maintenance/mark-clean) with application-boundary UUID/date/amount validation, no generic DML. No new migration - reuses Phase 2 RPCs directly (Module Hub checked: `NOT NEEDED`, confirmed by Claude - no booking/room module exists in `modules-hub/modules/`) |
-| Phase 4 Booking Server Actions (`app/actions/booking.ts`) | `VERIFIED` | Every action routed through `requireTenantContext()`; `setRoomMaintenanceAction` has an explicit Manager/Owner-only defense-in-depth check in addition to the Phase 2 RPC's own authority check |
-| Phase 4 Booking Backend Tests (`tests/phase4_booking_backend.test.ts`) | `VERIFIED` | 21/21 pass, independently re-run by Claude via `npx tsx` against a fresh local stack (Phase 1-3 migrations applied, no new migration for Phase 4): malformed-input rejection, cross-tenant rejection, create/reschedule/cancel, same-pet overlap rejection, remove/re-add pet, checked-in-blocks-removal-and-cancel, check-in on Asia/Bangkok business date, staff cannot set maintenance, checkout→cleaning, maintenance cannot bypass cleaning gate, cleaning→available, double mark-clean rejected, maintenance after cleaning, mark-clean cannot bypass maintenance, clear maintenance - exact match with the implementer's reported results, no discrepancies |
-| Room Gateways (`create_room`, config, maintenance, mark-clean) | `SCHEMA IMPLEMENTED` | มีใน migration และผ่าน static/lint แล้ว แต่ยังไม่มี negative test เจาะจงแยกสำหรับ maintenance-window edge case ในชุดที่รันจริงรอบนี้ |
-| Business Date Semantics (`pawspace_business_date()`) | `VERIFIED` | ใช้จริงในทุก RPC ที่ทดสอบด้านบน (check-in date gate, maintenance state, report_date default) ผ่านจริงในทุก test |
-| Daily Report Gateway (`create_daily_report`, delivery tracking) | `VERIFIED` (create + idempotency + checkout-race) | worker lease/retry (`retry_daily_report_delivery`, stale `sending` recovery) ยังไม่มี test แยกในรอบนี้ — ยังเป็น `DOCUMENTED` เฉพาะส่วนนั้น |
-| Customer / Pet Gateways | `VERIFIED` (core creation/cross-tenant paths) | ครอบคลุมโดย `phase2_rpc_rls.sql`; `delete_pet`/`delete_pet_owner`/`transfer_pet_owner` เจาะจงยังไม่มี negative test แยก |
-| LINE Claim DB Gateways (`generate_line_claim_token`, `reset_line_link`, `consume_line_claim_token_internal`) | `VERIFIED` | `supabase/migrations/20260820221500_phase5_line_claim.sql` applies cleanly on top of Phase 1-3. 32-bytes-random token, SHA-256 hash-at-rest (`extensions.digest`, correctly schema-qualified), 48h TTL, single-use, wrong-shop rejection, browser cannot call the internal consume RPC, Manager/Owner-only reset, duplicate-LINE-user-per-shop rejected via the pre-existing `UNIQUE (shop_id, line_user_id)` constraint from Phase 1 - all confirmed by real execution, not just reading the SQL |
-| LINE ID Token Verification (`lib/line-id-token.ts`) | `VERIFIED` | Calls the real LINE `POST /oauth2/v2.1/verify` endpoint, checks `iss`/`aud`/`sub`/`exp` explicitly, 8s timeout, fails closed (`LINE_UNAVAILABLE`) on any network error/abort rather than accepting an unverified identity - confirmed by real test with a mocked outage/timeout scenario |
-| LINE Claim Trusted-Server Flow (`lib/line-claim-core.ts`, `lib/line-claim-server.ts`, `app/api/line/claim/route.ts`) | `VERIFIED` | `service_role` stays server-side (`"server-only"` guard), body-size guard applied twice (header pre-check + actual byte re-check), narrow typed error codes returned to the client (no internal error detail leakage), browser only ever sends the LIFF ID token - never a client-asserted `line_user_id` |
-| LINE Claim UI (`app/line/claim/page.tsx`, `LineClaimClient.tsx`) | `VERIFIED` (wiring) | Uses `liff.getIDToken()` only, `no-referrer` + `noindex` metadata set as claimed; not covered by an automated test (browser/LIFF-runtime UI, same category as the Operations Dashboard preview) |
-| LINE Claim Server Actions (`app/actions/line-claim.ts`) | `VERIFIED` | Routed through `requireTenantContext()`; `resetLineLinkAction` has an explicit staff-forbidden defense-in-depth check in addition to the RPC's own `is_shop_manager_or_owner()` check |
-| Phase 5 LINE Claim Tests (`tests/phase5_line_claim.test.ts`) | `VERIFIED` | 32/32 pass after Claude completed the file's missing closing/footer and ran it via `npx tsx` against a fresh local stack: issuer/audience/expiry checks, outage fail-closed, no-plaintext-storage, SHA-256 hash format, 48h TTL, browser-cannot-consume, wrong-shop rejection, verified server consume, single-use/reuse rejection, duplicate-LINE-user rejection, staff-cannot-reset, manager-can-reset, reset clears all claim state, expired-token rejection, cross-tenant token-generation rejection, staff-can-generate-in-own-tenant |
-| Daily Report Media Pipeline (`lib/daily-report-media.ts`) | `VERIFIED` | Real content-vs-declared-type check via `sharp().metadata()` decode (not trusting extension/MIME alone) - a WEBP renamed `.png` is rejected. 10MB source cap, JPEG/PNG/WEBP/GIF/AVIF/HEIC/HEIF/TIFF/BMP accepted as originals, LINE rendition always normalized to JPEG or PNG at <=1024px per LINE Flex's format requirement, original never discarded |
-| Daily Report Storage (`lib/daily-report-storage.ts`) | `VERIFIED` | Deterministic tenant-scoped path (`shop/booking/pet/idempotency/index-hash`), upload-or-reuse handles idempotent retries without erroring, LINE-rendition upload failure rolls back the just-uploaded original (no orphaned partial state), bucket confirmed to reject direct browser upload |
-| LINE Delivery Worker (`supabase/migrations/20260820233000_phase6_daily_report_line_delivery.sql`, `lib/line-worker.ts`, `lib/line-transport.ts`) | `VERIFIED` | `FOR UPDATE SKIP LOCKED` atomic claim (confirmed under real concurrent workers - claimed exactly once), stale-`sending` reclaim after 5min, persistent `X-Line-Retry-Key` reused across retries, HTTP 200 and 409 both treated as accepted per LINE's own retry-key contract, 24h retry-key safety window enforced at both the DB claim layer and the transport layer, manual retry (`retry_daily_report_delivery`) preserves the same retry key |
-| Daily Report Upload Endpoint (`app/api/daily-reports/route.ts`) | `VERIFIED` | Gated via `requireTenantContext()`; orchestrates media validation -> storage -> `create_daily_report` RPC in that order; on RPC rejection only cleans up images *not* referenced by a concurrent/idempotent duplicate's already-successful report (checked via a fresh read before deleting) |
-| Phase 6 Daily Report + LINE Tests (`tests/phase6_daily_report_line.test.ts`) | `VERIFIED` | 43/43 pass, but only after Claude fixed a real defect: `lib/daily-report-media.ts`, `lib/daily-report-storage.ts`, and `lib/line-transport.ts` all had an unnecessary `import "server-only"` (none touches secrets directly - they receive credentials as parameters), which threw immediately when the test tried to import them outside the Next.js build system. Removed to match the Phase 5 precedent (`line-claim-core.ts` has no guard; only the actual secret-handling `line-claim-server.ts` does). After the fix: real image format/content validation (WEBP/PNG/AVIF/TIFF), idempotency, cross-tenant rejection, membership check, concurrent worker claim, stale-lease recovery, retry-key persistence, 24h safety window, checkout-race serialization - all confirmed, and Phase 4 (21/21) + Phase 5 (32/32) re-run clean with no regression from the fix |
-| Staff / Tenant Bootstrap | `DOCUMENTED` | ยังไม่มี test |
-| Google Sheets Binding + Outbox | `SCHEMA IMPLEMENTED` | ตารางและ `enqueue_sync_event` ผ่าน permission test แล้ว (`has_function_privilege` check) แต่ proof-of-control binding flow และ worker เองยังไม่มี test |
-| RLS + Table Privilege Lockdown | `VERIFIED` | ยืนยันจริงจาก `phase2_rpc_rls.sql`: ไม่มี DML grant หลุด, disabled staff เสีย visibility จริง |
-| LINE Flex Message Adapter | `ADAPTER/STUB` | `lib/integrations.ts::sendDailyReport()` ปฏิเสธการยิงจริงเสมอ แม้ config ครบ |
-| Google Sheets Adapter | `ADAPTER/STUB` | `lib/integrations.ts::enqueueSheetSync()` ปฏิเสธการยิงจริงเสมอ แม้ config ครบ |
-| Phase 3 Auth/Tenant DB Schema (`enforce_last_active_owner`, `get_current_staff_context`, `bootstrap_shop`, `create_staff_membership`, `disable/enable_staff`, `change_staff_role`, `remove_staff`) | `VERIFIED` | `supabase/migrations/20260820030000_phase3_auth_tenant.sql` applies cleanly on top of Phase 1+2. `supabase/tests/phase3_auth_tenant.sql` runs clean (exit 0). `tests/phase3_server_layer.test.ts` (33 assertions via `npx tsx`, real Supabase Auth + RPC calls) all pass, re-run by Claude independently after removing its hard-coded credential fallback |
-| Last-Active-Owner Invariant Concurrency | `VERIFIED` | Claude built and ran an independent repro (not the same script as the 33-test suite): 2 real owners, 2 concurrent DB sessions each self-disabling — exactly one succeeds, the other rejected with `Last Active Owner Invariant Violation`, final active-owner count confirmed as 1 |
-| App Login Rejects Inactive/Unaffiliated Staff | `VERIFIED` | Was broken: `lib/auth.ts::loginWithPassword` returned `success: true` and set session cookies even when `getStaffContext()` resolved `null` (no membership or inactive), and `app/login/page.tsx` only checked `res.success`. Fixed: cookies are now set only after confirming an active staff context; on rejection the just-created Supabase Auth session is signed out server-side. Verified by code re-read + `tsc`/`build` pass. **Covered by Phase 10 browser E2E** (`tests/e2e/phase10-pilot.spec.ts`) |
-| Staff Removal Auth Cleanup | `VERIFIED` | Was broken: `removeStaffAction` only called the `remove_staff` DB RPC, never touched Supabase Auth, leaving the Auth account active after membership removal. Fixed: added a best-effort, logged `admin.auth.admin.deleteUser()` call after the RPC succeeds (DB removal remains authoritative; Auth cleanup failure is logged, not silently swallowed, and does not re-grant access). Verified by code re-read + `tsc`/`build` pass. **Covered by Phase 10 browser E2E** |
-| Staff Invite Usable Credential | `VERIFIED` | Was broken: `inviteStaffAction` generated a `Math.random()` password that was never delivered anywhere when no password was supplied — membership created, no usable login path. Fixed: no-password path now calls `admin.auth.admin.inviteUserByEmail()` (real Supabase invite email via local Inbucket), with a `resetPasswordForEmail()` fallback for an already-existing account. Verified by code re-read + `tsc`/`build` pass. **Covered by Phase 10 browser E2E** |
-| Test-source hard-coded credentials | `FIXED, VERIFIED` | `tests/phase3_server_layer.test.ts` no longer has literal fallback anon/service-role keys — now throws a clear error if `NEXT_PUBLIC_SUPABASE_ANON_KEY` / `SUPABASE_SERVICE_ROLE_KEY` aren't set. Re-ran the full 33-test suite with real env vars after the change: still 33/33 |
+Implemented in:
+- `supabase/migrations/20260825141500_phase13_subscription_lifecycle.sql`
+- `supabase/migrations/20260825141600_phase13_subscription_hardening.sql`
+- `supabase/tests/phase13_subscription_lifecycle.sql`
+- `lib/dashboard-service.ts`
+- `app/dashboard/page.tsx`
+Implemented concepts include:
+- one authoritative `shop_subscriptions` record per shop;
+- 8 lifecycle states;
+- compatibility protection for legacy `shops.subscription_status`;
+- package / offer / billing interval authority;
+- Founding Member continuity;
+- commercial-access resolver using authoritative DB time;
+- service-role lifecycle/package mutation RPCs;
+- subscription audit log;
+- database-level commercial mutation blocking;
+- room/pet quota triggers;
+- owner/manager commercial status DTO/UI.
+
+**Not enough to mark Phase 13 CLOSED:** the current dedicated SQL test does not yet prove the entire mandatory matrix from the Phase 13 brief.
+
+Missing or insufficiently evidenced areas include:
+- 9→10→11 room boundary;
+- 299→300→301 pet boundary;
+- concurrent room/pet quota races;
+- over-quota CSV atomic rollback and duplicate handling under Phase 13;
+- complete lifecycle transition/timing matrix;
+- tenant/role negative matrix for every commercial mutation path;
+- full audit immutability probes;
+- Pro/Enterprise/Founding unlimited regression;
+- fresh Phase 9 + Phase 12 + affected regressions;
+- final evidence document and independent gate.
+
+---
+## 4. Integration reality
+
+### LINE
+Current production-intent code uses per-shop server-side configuration from:
+`LINE_CHANNEL_ACCESS_TOKENS_JSON[shopId]`
+
+This is server-only but is **not the same claim as Supabase Vault**. Vault remains a target secret-management option until actually adopted and verified.
+
+### Google Sheets
+A tenant-specific `shops.google_sheet_id` plus proof-of-control flow and trusted service credentials are implemented. Production credentials still require environment/secret-management operational hardening.
+
+### Camera
+Bounded public visitor-camera capability already exists from Engineering Phase 8. The future roadmap item is the broader RTSP/HLS multi-camera platform, not the basic bounded camera feature.
 
 ---
 
-## Closed gap: executable server-action coverage (GitHub Issue #3)
+## 5. Verification environment
 
-`tests/e2e/phase10-pilot.spec.ts` now exercises the real Next.js HTTP/browser runtime for `loginWithPassword`, both staff invitation paths, and `removeStaffAction`. It verifies inactive/no-membership rejection without PawSpace session cookies, usable credentials for password and no-password email invite flows, and removal revoking both membership and the Supabase Auth account. See `REVIEW-phase10-gate1-2026-08-21.md`. This closes the executable-coverage requirement formerly tracked by GitHub Issue #3.
+On 2026-08-28, Windows local Supabase verification is blocked because Docker Engine is unavailable on the PC. Due prior machine-instability concerns, Windows Docker is not a required path.
+
+Preferred Phase 13 verification:
+1. GitHub Actions ephemeral Ubuntu runner for supabase db start, supabase test db, TypeScript regressions and static gates;
+2. isolated Supabase cloud staging/test project for remote integration/E2E validation;
+3. macOS local stack when available;
+4. Windows Docker only after separate machine-stability work.
+
+Never run destructive reset/test commands against production.
+
+## 6. Next gates
+
+1. Complete documentation reconciliation.
+2. Build isolated verification environment.
+3. Expand Phase 13 mandatory tests.
+4. Execute fresh migrations + Phase 13 + regressions.
+5. Create `PHASE13_IMPLEMENTATION_EVIDENCE.md`.
+6. Independent review and close Phase 13.
+7. Implement production operations: staging, deploy/rollback, monitoring, backup/restore, incident/support.
+8. Run real-store Closed Beta.
+9. Integrate payment only after those gates.
 
 ---
 
-## Known bug found and fixed during this verification pass
+## 7. Source-of-truth priority
 
-`supabase/tests/phase2_rpc_rls.sql` originally called a `REVOKE`d `SECURITY DEFINER` function from a PL/pgSQL `DO` block and caught `insufficient_privilege` to assert the permission was denied. That exact pattern **segfaults this Postgres build** (`supabase/postgres:17.6.1.106`, signal 11), confirmed reproducible 3 times independently before the fix. Fixed by switching to the already-working static-check pattern (`has_function_privilege(...)`) used elsewhere in the same file. Re-verified clean (exit 0, no crash in container logs) after the fix. See `BRIEF-phase2-crash-fix-2026-08-20.md` for the original repro.
+1. `docs/PRD.md`
+2. `docs/SYSTEM_ARCHITECTURE.md`
+3. `docs/ROADMAP.md`
+4. `docs/BUSINESS_MODEL.md`
+5. `docs/IMPLEMENTATION_STATUS.md` for current implementation reality
+6. phase briefs for execution contracts
+7. evidence/review files for historical verification
 
-Separately, `enqueue_sync_event`'s `digest()` call needed to be schema-qualified as `extensions.digest()` — with `search_path` locked to `public, pg_temp` inside `SECURITY DEFINER` functions, the unqualified call couldn't resolve `pgcrypto`'s function. Fixed and re-verified.
-
----
-
-## Integration Boundary Warning
-
-Global env ใน `.env.example` / `lib/integrations.ts` เช่น `LINE_CHANNEL_ACCESS_TOKEN`, `LINE_TARGET_ID`, `GOOGLE_SERVICE_ACCOUNT_JSON`, `GOOGLE_SHEET_ID` เป็น **preview-only** และห้ามใช้เป็น production multi-tenant contract.
-
-Production target ต้อง:
-1. LINE secret เป็น per-shop trusted secret/Vault
-2. Google Sheet target ใช้เฉพาะ `shops.google_sheet_id` ที่ผ่าน trusted proof-of-control binding ของ tenant แล้ว; Browser ห้าม bind Sheet ID โดยตรง
-3. LINE recipient ใช้ verified `pet_owners.line_user_id`
-4. Browser ห้ามถือ `service_role` หรือ integration secret
-
----
-
-## Promotion Rule
-
-ห้ามเปลี่ยน hardened components จาก `DOCUMENTED` เป็น implemented/verified จากเอกสารหรือรายงาน Agent เพียงอย่างเดียว. ต้องตรวจ migration/code จริงและ executable negative/concurrency tests ก่อนทุกครั้ง — รอบนี้ Claude รันทุก test เองจริงกับ Postgres 17.6.1.106 ผ่าน Docker/Supabase CLI local stack ก่อนจะ mark `VERIFIED` ในตารางด้านบน ไม่ได้เชื่อจากรายงานเพียงอย่างเดียว.
+When docs and executable code disagree, do not silently promote code claims. Reconcile the contract and rerun the relevant executable gate.

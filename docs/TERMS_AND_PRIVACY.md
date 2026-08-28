@@ -1,7 +1,7 @@
-# ⚖️ PawSpace — Draft Terms of Service & Privacy Framework
+# ⚖️ Pawstia PMS — Draft Terms of Service & Privacy Framework
 
 > **⚠️ DOCUMENT STATUS:** `[DRAFT — For Review & Commercial Planning Only / Not for Production Deployment]`
-> **วัตถุประสงค์:** ร่างกรอบข้อตกลงการให้บริการและแนวทางปฏิบัติด้านความเป็นส่วนตัวเบื้องต้นสำหรับโครงการ PawSpace ก่อนเข้าสู่กระบวนการตรวจทานทางกฎหมายและสัญญาผู้ให้บริการช่วง (Vendor DPA) เต็มรูปแบบ
+> **วัตถุประสงค์:** ร่างกรอบข้อตกลงการให้บริการและแนวทางปฏิบัติด้านความเป็นส่วนตัวเบื้องต้นสำหรับโครงการ Pawstia PMS (internal project identity: PawSpace/PS01) ก่อนเข้าสู่กระบวนการตรวจทานทางกฎหมายและสัญญาผู้ให้บริการช่วง (Vendor DPA) เต็มรูปแบบ
 
 ---
 
@@ -10,7 +10,7 @@
 เพื่อให้สอดคล้องกับแนวทางพระราชบัญญัติคุ้มครองข้อมูลส่วนบุคคล พ.ศ. 2562 (PDPA):
 
 * **ร้านค้า / โรงแรมสัตว์เลี้ยง (ผู้ใช้บริการ):** ดำรงสถานะเป็น **ผู้ควบคุมข้อมูลส่วนบุคคล (Data Controller)** มีหน้าที่กำหนดฐานทางกฎหมาย (Lawful Basis) ที่เหมาะสมสำหรับแต่ละกิจกรรมการประมวลผล และขอความยินยอม (Consent) จากเจ้าของสัตว์เลี้ยงในกรณีที่ใช้ความยินยอมเป็นฐานหรือตามที่กฎหมายกำหนด
-* **PawSpace (ผู้ให้บริการ):** ดำรงสถานะเป็น **ผู้ประมวลผลข้อมูลส่วนบุคคล (Data Processor)** มีหน้าที่ประมวลผล จัดเก็บ และส่งต่อข้อมูล (เช่น การจัดส่งรายงาน Daily Report ทาง LINE) ตามคำสั่งและการดำเนินการของร้านค้าเท่านั้น
+* **ผู้ให้บริการ Pawstia PMS ภายใต้แบรนด์ WSTERA (legal entity/operator TBD before production):** ดำรงสถานะเป็น **ผู้ประมวลผลข้อมูลส่วนบุคคล (Data Processor)** มีหน้าที่ประมวลผล จัดเก็บ และส่งต่อข้อมูล (เช่น การจัดส่งรายงาน Daily Report ทาง LINE) ตามคำสั่งและการดำเนินการของร้านค้าเท่านั้น
 
 ---
 
@@ -30,9 +30,9 @@
 
 | ผู้ให้บริการช่วง (Subprocessor) | วัตถุประสงค์การใช้งาน | สถานที่ตั้งเซิร์ฟเวอร์ / การถ่ายโอนข้อมูล |
 | :--- | :--- | :--- |
-| **Supabase Inc.** | จัดการฐานข้อมูลหลัก (PostgreSQL), Auth และ Storage เก็บรูปภาพ | Cloud Infrastructure (AWS Singapore / Global) |
-| **Vercel Inc.** | โฮสติ้งเว็บแอปพลิเคชันและ API Serverless (Next.js 16.x) | Global Edge Network |
-| **LINE Corporation** | ส่งข้อความแจ้งเตือน Daily Report ผ่าน Messaging API / LIFF | ญี่ปุ่น / ภูมิภาคเอเชีย |
+| **Supabase Inc.** | จัดการฐานข้อมูลหลัก (PostgreSQL), Auth และ Storage เก็บรูปภาพ | ต้องยืนยัน production project region และ vendor terms จริงก่อน final legal review |
+| **Hosting provider — TBD** | โฮสติ้งเว็บแอปพลิเคชัน/API | ต้องยืนยันผู้ให้บริการและภูมิภาคจริงก่อน Production; ห้ามถือว่าเป็น Vercel โดยอัตโนมัติ |
+| **LY Corporation (LINE services)** | ส่งข้อความแจ้งเตือน Daily Report ผ่าน Messaging API / LIFF | ต้องยืนยัน applicable terms / transfer facts จาก production account และ vendor documentation ก่อน final legal review |
 | **Google LLC** | ซิงก์ข้อมูลลง Google Sheets ตามคำสั่งของร้านค้า | Global Cloud Infrastructure |
 
 ---
@@ -41,7 +41,7 @@
 
 1. **การรักษาความปลอดภัยของข้อมูล:**
    * การส่งผ่านข้อมูลกระทำผ่านโปรโตคอล HTTPS / TLS มาตรฐาน
-   * รหัสลับและโทเค็น API ของแต่ละร้านค้า (เช่น LINE Channel Access Token) ถูกจัดเก็บแบบ Encrypted ผ่าน **Supabase Vault**
+   * **Current implementation:** LINE Channel Access Token ต่อร้านถูกอ่านจาก server-only environment configuration (`LINE_CHANNEL_ACCESS_TOKENS_JSON[shopId]`). **Supabase Vault เป็น target architecture เท่านั้นจนกว่าจะ implement และ verify จริง**
    * ข้อมูลตารางระหว่างร้านค้าถูกแยกขาดจากกันด้วย Supabase Row-Level Security (RLS 2-Tier)
 2. **การแยกประเภทพื้นที่จัดเก็บไฟล์สื่อ (Media Storage Architecture):**
    * **รูปถ่าย Daily Report:** จัดเก็บใน Bucket `daily-report-photos` (Public CDN Read with Secure Cryptographic UUID Paths) เพื่อให้รูปภาพในการ์ด LINE Flex Message แสดงผลแก่ลูกค้าได้อย่างต่อเนื่องโดยไม่หมดอายุ
@@ -55,7 +55,7 @@
 ## 5. กระบวนการจัดการสิทธิของเจ้าของข้อมูลและเหตุละเมิด (DSAR & Incident Procedure)
 
 1. **การใช้สิทธิของเจ้าของข้อมูล (Data Subject Access Request - DSAR):**
-   * หากเจ้าของสัตว์เลี้ยงประสงค์จะขอเข้าถึง แก้ไข ลบ หรือระงับการใช้ข้อมูล ร้านค้าในฐานะ Data Controller สามารถดำเนินการจัดการข้อมูลผ่านแดชบอร์ด PawSpace ได้โดยตรง
+   * หากเจ้าของสัตว์เลี้ยงประสงค์จะขอเข้าถึง แก้ไข ลบ หรือระงับการใช้ข้อมูล ร้านค้าในฐานะ Data Controller สามารถดำเนินการจัดการข้อมูลผ่านแดชบอร์ด Pawstia PMS ได้โดยตรง
 2. **กระบวนการแจ้งเตือนเหตุละเมิดความปลอดภัย (Breach Notification Procedure):**
    * หาก PawSpace ตรวจพบและยืนยันเหตุละเมิดความปลอดภัยของข้อมูลส่วนบุคคล PawSpace จะแจ้งให้ร้านค้า (Data Controller) ทราบ **โดยไม่ชักช้าหลังยืนยันเหตุ โดยตั้งเป้าหมายแจ้งเตือนภายใน 24 ชั่วโมง** เพื่อให้ร้านค้ามีเวลาเพียงพอในการประเมินและแจ้งต่อสำนักงานคณะกรรมการคุ้มครองข้อมูลส่วนบุคคล (สคส. / PDPC) ตามกรอบระยะเวลาทางกฎหมายของตน
 

@@ -1,9 +1,11 @@
-# 🏛️ PawSpace — System Architecture & Target Implementation Specification
+# 🏛️ Pawstia PMS — System Architecture & Target Implementation Specification
 
 > **Document Status:** Authoritative Target Specification (Final Hardened Specification)
 > **Target Release:** V1 Lean MVP
 > **Technical Stack:** Next.js 16.3.1 (App Router) + React 19 + TypeScript + Tailwind CSS + Supabase (PostgreSQL 15+)
 > **Architecture Principle:** **No generic CRUD on invariant-bearing tables from browser clients. All system mutations MUST go through authoritative Security Definer RPCs.**
+
+> **Current-state reconciliation (2026-08-28):** Engineering Phase 13 has added authoritative subscription lifecycle, commercial access enforcement, Starter room/pet quotas, and subscription auditability. Payment collection is still absent. The repository currently resolves per-shop LINE tokens from server-side environment configuration (`LINE_CHANNEL_ACCESS_TOKENS_JSON`); Supabase Vault remains a target secret-management architecture, not a claim about the current runtime.
 
 ---
 

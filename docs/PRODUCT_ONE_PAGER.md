@@ -1,10 +1,12 @@
-# 🐾 PawSpace — Product One-Pager (โบรชัวร์สรุปจุดขาย 1 หน้า)
+# 🐾 Pawstia PMS — Product One-Pager (โบรชัวร์สรุปจุดขาย 1 หน้า)
+
+> **Publication status:** `DRAFT — DO NOT PUBLISH` until formal trademark/legal clearance and official channels are confirmed.
 
 > **"Pet Hotel OS ที่จัดการห้อง การเข้าพัก และ Daily Care Report ผ่าน LINE โดยร้านยังมีสำเนาส่งออกของข้อมูลลูกค้าและรายการจองอยู่ใน Google Sheets"**
 
 ---
 
-## 🛑 3 ปัญหาใหญ่ของโรงแรมสัตว์เลี้ยง ที่ PawSpace แก้ไขให้
+## 🛑 3 ปัญหาใหญ่ของโรงแรมสัตว์เลี้ยง ที่ Pawstia PMS แก้ไขให้
 
 ```
 ┌──────────────────────────────┬──────────────────────────────┬──────────────────────────────┐
@@ -38,9 +40,9 @@
 
 ---
 
-## 📊 เปรียบเทียบ PawSpace กับการทำงานแบบเดิม
+## 📊 เปรียบเทียบ Pawstia PMS กับการทำงานแบบเดิม
 
-| ฟังก์ชันการทำงาน | สมุดจด / Excel เดิม | โปรแกรมโบราณ (Windows 98) | **PawSpace** 🌟 |
+| ฟังก์ชันการทำงาน | สมุดจด / Excel เดิม | โปรแกรมโบราณ (Windows 98) | **Pawstia PMS** 🌟 |
 | :--- | :---: | :---: | :---: |
 | **ใช้งานบน iPad / มือถือ** | ❌ ลำบาก | ❌ ไม่ได้ (ต้องเปิดคอม) | ✅ **ออกแบบสำหรับ iPad/มือถือ** |
 | **ป้องกันการจองห้องชนกัน** | ❌ พลาดบ่อย | ⚠️ ได้ระดับหนึ่ง | ✅ **ป้องกันที่ระดับฐานข้อมูล** |
@@ -58,5 +60,5 @@
 ---
 
 **📞 ติดต่อขอทดลองใช้งานฟรี:**
-* **LINE Official:** `@pawspace.th`
-* **เว็บไซต์:** `https://pawspace.app`
+* **LINE Official:** `TBD — official handle not claimed`
+* **เว็บไซต์:** `TBD — production web address not confirmed`

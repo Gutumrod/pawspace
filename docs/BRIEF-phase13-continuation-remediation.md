@@ -5,6 +5,12 @@ Local path: `D:\AI-Workspace\projects\saas-product-hub\products\PawSpace`
 Branch: `master`
 Last independently verified pre-Phase13 baseline: `dc5281e`
 
+## Current status override — 2026-08-28
+
+This brief is now a **historical remediation contract**. The Phase 13 implementation described below was committed at `97c9fd6`; repository HEAD is later and the working tree was clean at documentation reconciliation. Do not treat the old "partially present in the working tree" wording as current state.
+
+Phase 13 is **not yet independently CLOSED** because the complete mandatory test matrix has not been freshly rerun and `PHASE13_IMPLEMENTATION_EVIDENCE.md` is still missing.
+
 ## Critical handoff rule
 
 Phase 13 implementation is already partially present in the working tree.
