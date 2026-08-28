@@ -18,8 +18,13 @@
 
 ## Before Paid Launch
 
-- [ ] Subscription lifecycle implemented.
-- [ ] Payment collection process defined.
+- [x] Subscription lifecycle schema implemented (Phase 13: `shop_subscriptions`,
+      `subscription_audit_log`, transition RPCs — `supabase/migrations/20260825141500_phase13_subscription_lifecycle.sql`,
+      `20260825141600_phase13_subscription_hardening.sql`). This is the state-machine schema only;
+      it is not connected to any payment collection.
+- [ ] Payment collection absent. No payment/billing integration exists anywhere in the product by
+      design (Phase 9/11 both explicitly scoped it out) — do not read the schema item above as
+      revenue-collection capability.
 - [ ] Upgrade/downgrade rules defined.
 - [ ] Trial expiration handling defined.
 - [ ] Suspension/reactivation workflow defined.
