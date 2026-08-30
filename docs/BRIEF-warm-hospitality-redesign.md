@@ -8,6 +8,29 @@ Module Hub gate: **NOT NEEDED** — no new capability or reusable backend module
 
 ---
 
+## 0. Dispatch — how to run this end to end
+
+This brief is the complete package. Hand it to the implementer as-is.
+
+**Sequence (team routing per `vault/00-System/Decisions/team-structure.md`):**
+
+| Stage | Owner | Produces |
+|---|---|---|
+| 1. Implement | **Codex** (codebase-integrated change, behavior-freeze discipline) — AGY may do a visual preflight against `docs/Design.md` + `docs/design-reference/warm-hospitality/` but is not required | Working tree change on a branch off `master`; `docs/WARM_HOSPITALITY_IMPLEMENTATION_EVIDENCE.md`; raw output of static gates + Phase 10 E2E |
+| 2. Independent QA | **Qwen Code** (must NOT be whoever implemented) | Blind review verdict: diff is presentation-only, no forbidden files, no BOM, behavior preserved, states present, contrast/targets hold, responsive at 320/375/768/1280 across all 8 surfaces. Raw evidence (log / commit hash / screenshots) reviewable by a third party |
+| 3. Commander Final Review Gate | **Claude (Commander)** | Opens the raw evidence directly (not just QA's summary). PASS → merge to `master`. Any defect → back to Stage 1 owner |
+
+**Entry point for the implementer:** §7 step 1 (Inspect). Read in this order:
+`docs/Design.md` → this brief → `docs/design-reference/warm-hospitality/`
+(images 01–06 + page-01-*; skip 07–10) → `git show wip/warm-hospitality-design-c-2026-08-28`
+(reference only) → the 8 target files at `master`.
+
+**Do not** start Stage 2 or 3 early, skip the evidence doc, or let the
+implementer self-certify (team rule 2026-08-25: verification evidence must
+come from a different agent with reviewable raw artifacts).
+
+---
+
 ## 1. Purpose
 
 เปลี่ยน visual direction ของ Pawstia ทั้งแอปจาก **"Apple-inspired Soft-3D
