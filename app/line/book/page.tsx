@@ -3,7 +3,7 @@ import { getSupabaseAdminClient } from "@/lib/supabase-admin";
 import { LineBookingClient } from "./LineBookingClient";
 
 export const metadata: Metadata = {
-  title: "จองห้องพัก | PawSpace",
+  title: "จองห้องพัก | Pawstia",
   referrer: "no-referrer",
   robots: { index: false, follow: false },
 };
@@ -41,17 +41,12 @@ export default async function LineBookingPage({ searchParams }: PageProps) {
         <div className="liff-card">
           <header className="liff-header">
             <div className="liff-brand">
-              <div className="brand-mark" aria-hidden="true">
-                🐾
-              </div>
               <div>
-                <h1 className="liff-brand-title">PawSpace</h1>
-                <p className="liff-brand-subtitle">ระบบจองห้องพักสัตว์เลี้ยง</p>
+                <h1 className="liff-brand-title">Pawstia</h1>
+                <p className="liff-brand-subtitle">Pet stay concierge</p>
               </div>
             </div>
-            <span className="liff-badge">
-              <span>✦</span> LINE Booking
-            </span>
+            <span className="liff-badge">LINE BOOKING</span>
           </header>
 
           <LineBookingClient shopId={shopId} liffId={liffId} />
