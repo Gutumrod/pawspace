@@ -1,0 +1,122 @@
+name: Phase 13 verification
+
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - ".github/workflows/phase13-verification.yml"
+      - "supabase/**"
+      - "scripts/phase13-concurrency.sh"
+      - "tests/**"
+      - "app/**"
+      - "lib/**"
+      - "package.json"
+      - "pnpm-lock.yaml"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: phase13-verification-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up pnpm
+        uses: pnpm/action-setup@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Set up Supabase CLI
+        uses: supabase/setup-cli@v1
+        with:
+          version: 2.101.0
+
+      - name: Start isolated Supabase stack
+        run: supabase start
+
+      - name: Export isolated Supabase test environment
+        shell: bash
+        run: |
+          eval "$(supabase status -o env)"
+          echo "NEXT_PUBLIC_SUPABASE_URL=$API_URL" >> "$GITHUB_ENV"
+          echo "NEXT_PUBLIC_SUPABASE_ANON_KEY=$ANON_KEY" >> "$GITHUB_ENV"
+          echo "SUPABASE_SERVICE_ROLE_KEY=$SERVICE_ROLE_KEY" >> "$GITHUB_ENV"
+          echo "API_URL=$API_URL" >> "$GITHUB_ENV"
+          echo "ANON_KEY=$ANON_KEY" >> "$GITHUB_ENV"
+          echo "SERVICE_ROLE_KEY=$SERVICE_ROLE_KEY" >> "$GITHUB_ENV"
+
+      - name: Replay migrations from a clean database
+        run: supabase db reset
+
+      - name: Lint database schema
+        run: supabase db lint --local --fail-on error
+
+      - name: Run database regression suites
+        shell: bash
+        run: |
+          set -euo pipefail
+          tests=(
+            supabase/tests/phase1_schema.sql
+            supabase/tests/phase2_rpc_rls.sql
+            supabase/tests/phase3_auth_tenant.sql
+            supabase/tests/phase7_google_sync.sql
+            supabase/tests/phase8_camera_access.sql
+            supabase/tests/phase9_commercial_entitlements.sql
+            supabase/tests/phase13_subscription_lifecycle.sql
+            supabase/tests/phase13_lifecycle_matrix.sql
+            supabase/tests/phase13_csv_atomicity.sql
+          )
+          for test in "${tests[@]}"; do
+            echo "=== $test ==="
+            supabase test db "$test"
+          done
+
+      - name: Run Phase 13 quota concurrency races
+        shell: bash
+        run: bash scripts/phase13-concurrency.sh
+
+      - name: Run TypeScript regression suites sequentially
+        shell: bash
+        run: |
+          set -euo pipefail
+          for test in tests/*.test.ts; do
+            echo "=== $test ==="
+            npx --yes tsx@4.23.13 --test "$test"
+          done
+
+      - name: Install Playwright Chromium
+        run: pnpm exec playwright install --with-deps chromium
+
+      - name: Run Phase 10 browser regression
+        run: pnpm test:e2e
+
+      - name: Typecheck
+        run: pnpm exec tsc --noEmit
+
+      - name: Lint application
+        run: pnpm lint
+
+      - name: Build application
+        run: pnpm build
+
+      - name: Check diff whitespace
+        run: git diff --check
+
+      - name: Stop isolated Supabase stack
+        if: always()
+        run: supabase stop --no-backup
