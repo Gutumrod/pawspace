@@ -213,7 +213,8 @@ END $$;
 -- not service_role, because runtime service_role has no raw subscription DML authority.
 RESET ROLE;
 UPDATE shop_subscriptions
-SET current_period_end=now()-interval '1 second'
+SET current_period_start=now()-interval '30 days',
+    current_period_end=now()-interval '1 second'
 WHERE shop_id=(SELECT shop_id FROM phase13_timing_shops WHERE kind='cancel');
 UPDATE shop_subscriptions
 SET grace_period_end=now()-interval '1 second'
