@@ -59,6 +59,7 @@ jobs:
           echo "API_URL=$API_URL" >> "$GITHUB_ENV"
           echo "ANON_KEY=$ANON_KEY" >> "$GITHUB_ENV"
           echo "SERVICE_ROLE_KEY=$SERVICE_ROLE_KEY" >> "$GITHUB_ENV"
+          echo "DB_URL=$DB_URL" >> "$GITHUB_ENV"
 
       - name: Replay migrations from a clean database
         run: supabase db reset
@@ -79,7 +80,7 @@ jobs:
           trap restore EXIT
           find supabase/migrations -name '*.sql' ! -name '20260220000000_initial_schema.sql' -exec mv -t "$held" {} +
           supabase db reset
-          supabase test db supabase/tests/phase1_schema.sql
+          psql "$DB_URL" -v ON_ERROR_STOP=1 -f supabase/tests/phase1_schema.sql
           restore
           supabase db reset
 
@@ -87,9 +88,14 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          tests=(
+          # phase1-3 are plain psql scripts (ON_ERROR_STOP + RAISE EXCEPTION); they emit no
+          # TAP plan, so pg_prove reports "No plan found" regardless of the assertions.
+          # phase7 onwards are pgTAP and must keep running through `supabase test db`.
+          psql_tests=(
             supabase/tests/phase2_rpc_rls.sql
             supabase/tests/phase3_auth_tenant.sql
+          )
+          pgtap_tests=(
             supabase/tests/phase7_google_sync.sql
             supabase/tests/phase8_camera_access.sql
             supabase/tests/phase9_commercial_entitlements.sql
@@ -97,8 +103,12 @@ jobs:
             supabase/tests/phase13_lifecycle_matrix.sql
             supabase/tests/phase13_csv_atomicity.sql
           )
-          for test in "${tests[@]}"; do
-            echo "=== $test ==="
+          for test in "${psql_tests[@]}"; do
+            echo "=== $test (psql) ==="
+            psql "$DB_URL" -v ON_ERROR_STOP=1 -f "$test"
+          done
+          for test in "${pgtap_tests[@]}"; do
+            echo "=== $test (pgTAP) ==="
             supabase test db "$test"
           done
 
