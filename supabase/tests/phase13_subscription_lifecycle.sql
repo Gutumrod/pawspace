@@ -53,7 +53,7 @@ END $$;
 -- Owner/manager status reads remain tenant-scoped; staff/inactive/no-membership fail closed.
 DO $$
 DECLARE
-  v_shop uuid := (SELECT v::uuid FROM phase13_values WHERE k='shop');
+  v_shop uuid := (SELECT pv.v::uuid FROM phase13_values AS pv WHERE k='shop');
   v_manager uuid := gen_random_uuid();
   v_staff uuid := gen_random_uuid();
   v_inactive uuid := gen_random_uuid();
@@ -81,11 +81,11 @@ END $$;
 
 SET LOCAL ROLE authenticated;
 SELECT set_config('request.jwt.claim.role','authenticated',true);
-SELECT set_config('request.jwt.claim.sub',(SELECT v FROM phase13_values WHERE k='owner'),true);
+SELECT set_config('request.jwt.claim.sub',(SELECT pv.v FROM phase13_values AS pv WHERE k='owner'),true);
 DO $$
 DECLARE v jsonb;
 BEGIN
-  v := get_shop_commercial_status((SELECT v::uuid FROM phase13_values WHERE k='shop'));
+  v := get_shop_commercial_status((SELECT pv.v::uuid FROM phase13_values AS pv WHERE k='shop'));
   IF v->>'lifecycle_status' <> 'trialing' THEN
     RAISE EXCEPTION 'Owner could not read authoritative commercial status';
   END IF;
@@ -94,11 +94,11 @@ RESET ROLE;
 
 SET LOCAL ROLE authenticated;
 SELECT set_config('request.jwt.claim.role','authenticated',true);
-SELECT set_config('request.jwt.claim.sub',(SELECT v FROM phase13_values WHERE k='manager'),true);
+SELECT set_config('request.jwt.claim.sub',(SELECT pv.v FROM phase13_values AS pv WHERE k='manager'),true);
 DO $$
 DECLARE v jsonb;
 BEGIN
-  v := get_shop_commercial_status((SELECT v::uuid FROM phase13_values WHERE k='shop'));
+  v := get_shop_commercial_status((SELECT pv.v::uuid FROM phase13_values AS pv WHERE k='shop'));
   IF v->>'lifecycle_status' <> 'trialing' THEN
     RAISE EXCEPTION 'Manager could not read authoritative commercial status';
   END IF;
@@ -107,12 +107,12 @@ RESET ROLE;
 
 SET LOCAL ROLE authenticated;
 SELECT set_config('request.jwt.claim.role','authenticated',true);
-SELECT set_config('request.jwt.claim.sub',(SELECT v FROM phase13_values WHERE k='staff'),true);
+SELECT set_config('request.jwt.claim.sub',(SELECT pv.v FROM phase13_values AS pv WHERE k='staff'),true);
 DO $$
 DECLARE denied boolean := false;
 BEGIN
   BEGIN
-    PERFORM get_shop_commercial_status((SELECT v::uuid FROM phase13_values WHERE k='shop'));
+    PERFORM get_shop_commercial_status((SELECT pv.v::uuid FROM phase13_values AS pv WHERE k='shop'));
   EXCEPTION WHEN OTHERS THEN denied := SQLERRM LIKE '%Unauthorized%'; END;
   IF NOT denied THEN RAISE EXCEPTION 'Plain staff commercial status read was not rejected'; END IF;
 END $$;
@@ -120,12 +120,12 @@ RESET ROLE;
 
 SET LOCAL ROLE authenticated;
 SELECT set_config('request.jwt.claim.role','authenticated',true);
-SELECT set_config('request.jwt.claim.sub',(SELECT v FROM phase13_values WHERE k='inactive'),true);
+SELECT set_config('request.jwt.claim.sub',(SELECT pv.v FROM phase13_values AS pv WHERE k='inactive'),true);
 DO $$
 DECLARE denied boolean := false;
 BEGIN
   BEGIN
-    PERFORM get_shop_commercial_status((SELECT v::uuid FROM phase13_values WHERE k='shop'));
+    PERFORM get_shop_commercial_status((SELECT pv.v::uuid FROM phase13_values AS pv WHERE k='shop'));
   EXCEPTION WHEN OTHERS THEN denied := SQLERRM LIKE '%Unauthorized%'; END;
   IF NOT denied THEN RAISE EXCEPTION 'Inactive manager commercial status read was not rejected'; END IF;
 END $$;
@@ -133,12 +133,12 @@ RESET ROLE;
 
 SET LOCAL ROLE authenticated;
 SELECT set_config('request.jwt.claim.role','authenticated',true);
-SELECT set_config('request.jwt.claim.sub',(SELECT v FROM phase13_values WHERE k='outsider'),true);
+SELECT set_config('request.jwt.claim.sub',(SELECT pv.v FROM phase13_values AS pv WHERE k='outsider'),true);
 DO $$
 DECLARE denied boolean := false;
 BEGIN
   BEGIN
-    PERFORM get_shop_commercial_status((SELECT v::uuid FROM phase13_values WHERE k='shop'));
+    PERFORM get_shop_commercial_status((SELECT pv.v::uuid FROM phase13_values AS pv WHERE k='shop'));
   EXCEPTION WHEN OTHERS THEN denied := SQLERRM LIKE '%Unauthorized%'; END;
   IF NOT denied THEN RAISE EXCEPTION 'No-membership commercial status read was not rejected'; END IF;
 END $$;
@@ -146,12 +146,12 @@ RESET ROLE;
 
 SET LOCAL ROLE authenticated;
 SELECT set_config('request.jwt.claim.role','authenticated',true);
-SELECT set_config('request.jwt.claim.sub',(SELECT v FROM phase13_values WHERE k='manager'),true);
+SELECT set_config('request.jwt.claim.sub',(SELECT pv.v FROM phase13_values AS pv WHERE k='manager'),true);
 DO $$
 DECLARE denied boolean := false;
 BEGIN
   BEGIN
-    PERFORM get_shop_commercial_status((SELECT v::uuid FROM phase13_values WHERE k='other_shop'));
+    PERFORM get_shop_commercial_status((SELECT pv.v::uuid FROM phase13_values AS pv WHERE k='other_shop'));
   EXCEPTION WHEN OTHERS THEN denied := SQLERRM LIKE '%Unauthorized%'; END;
   IF NOT denied THEN RAISE EXCEPTION 'Cross-tenant commercial status read was not rejected'; END IF;
 END $$;
@@ -259,7 +259,7 @@ SELECT set_config('request.jwt.claim.role','service_role',true);
 -- Package authority: billing interval, idempotency, actor semantics, and atomic audit.
 DO $$
 DECLARE
-  v_shop uuid := (SELECT v::uuid FROM phase13_values WHERE k='shop');
+  v_shop uuid := (SELECT pv.v::uuid FROM phase13_values AS pv WHERE k='shop');
   v_key uuid := gen_random_uuid();
   v_before int;
   v_after int;
@@ -282,7 +282,7 @@ END $$;
 -- Lifecycle timestamps, allowed/illegal transitions, terminal continuity, and no false audit.
 DO $$
 DECLARE
-  v_shop uuid := (SELECT v::uuid FROM phase13_values WHERE k='shop');
+  v_shop uuid := (SELECT pv.v::uuid FROM phase13_values AS pv WHERE k='shop');
   v_count int;
   denied boolean := false;
 BEGIN
@@ -309,7 +309,7 @@ END $$;
 -- Terminal state blocks both package changes and representative business mutations.
 DO $$
 DECLARE
-  v_shop uuid := (SELECT v::uuid FROM phase13_values WHERE k='shop');
+  v_shop uuid := (SELECT pv.v::uuid FROM phase13_values AS pv WHERE k='shop');
   denied boolean := false;
 BEGIN
   BEGIN
@@ -327,11 +327,11 @@ END $$;
 RESET ROLE;
 SET LOCAL ROLE authenticated;
 SELECT set_config('request.jwt.claim.role','authenticated',true);
-SELECT set_config('request.jwt.claim.sub',(SELECT v FROM phase13_values WHERE k='owner'),true);
+SELECT set_config('request.jwt.claim.sub',(SELECT pv.v FROM phase13_values AS pv WHERE k='owner'),true);
 DO $$
 DECLARE v jsonb;
 BEGIN
-  v := get_shop_commercial_status((SELECT v::uuid FROM phase13_values WHERE k='shop'));
+  v := get_shop_commercial_status((SELECT pv.v::uuid FROM phase13_values AS pv WHERE k='shop'));
   IF v->>'lifecycle_status' <> 'cancelled'
      OR COALESCE((v->>'commercial_access')::boolean,true) IS NOT FALSE THEN
     RAISE EXCEPTION 'Owner lost safe read-only subscription visibility after terminal state';
