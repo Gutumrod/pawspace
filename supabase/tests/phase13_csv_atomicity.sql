@@ -7,18 +7,22 @@ GRANT SELECT ON phase13_csv_values TO authenticated;
 
 DO $$
 DECLARE
-  v_user uuid := gen_random_uuid();
+  v_duplicate_user uuid := gen_random_uuid();
+  v_atomic_user uuid := gen_random_uuid();
   v_duplicate_shop uuid := gen_random_uuid();
   v_atomic_shop uuid := gen_random_uuid();
   v_duplicate_owner uuid := gen_random_uuid();
   v_atomic_owner uuid := gen_random_uuid();
 BEGIN
-  INSERT INTO auth.users(id,email) VALUES (v_user,'phase13-csv-owner@example.invalid');
+  INSERT INTO auth.users(id,email) VALUES
+    (v_duplicate_user,'phase13-csv-duplicate-owner@example.invalid'),
+    (v_atomic_user,'phase13-csv-atomic-owner@example.invalid');
   INSERT INTO shops(id,name,slug) VALUES
     (v_duplicate_shop,'Phase 13 CSV Duplicate','phase13-csv-duplicate'),
     (v_atomic_shop,'Phase 13 CSV Atomic','phase13-csv-atomic');
-  INSERT INTO staff_users(id,shop_id,email,name,role,is_active)
-  VALUES (v_user,v_duplicate_shop,'phase13-csv-owner@example.invalid','Phase 13 CSV Owner','owner',TRUE);
+  INSERT INTO staff_users(id,shop_id,email,name,role,is_active) VALUES
+    (v_duplicate_user,v_duplicate_shop,'phase13-csv-duplicate-owner@example.invalid','Phase 13 CSV Duplicate Owner','owner',TRUE),
+    (v_atomic_user,v_atomic_shop,'phase13-csv-atomic-owner@example.invalid','Phase 13 CSV Atomic Owner','owner',TRUE);
 
   INSERT INTO pet_owners(id,shop_id,first_name,phone) VALUES
     (v_duplicate_owner,v_duplicate_shop,'Duplicate Owner','0813100001'),
@@ -32,7 +36,8 @@ BEGIN
   FROM generate_series(1,299) n;
 
   INSERT INTO phase13_csv_values VALUES
-    ('user',v_user::text),
+    ('duplicate_user',v_duplicate_user::text),
+    ('atomic_user',v_atomic_user::text),
     ('duplicate_shop',v_duplicate_shop::text),
     ('atomic_shop',v_atomic_shop::text);
 END $$;
@@ -41,7 +46,7 @@ SET LOCAL ROLE authenticated;
 SELECT set_config('request.jwt.claim.role','authenticated',true);
 SELECT set_config(
   'request.jwt.claim.sub',
-  (SELECT v FROM phase13_csv_values WHERE k='user'),
+  (SELECT v FROM phase13_csv_values WHERE k='duplicate_user'),
   true
 );
 
@@ -86,18 +91,14 @@ BEGIN
   END IF;
 END $$;
 
--- Move the same authenticated owner membership to the second tenant so the RPC
--- continues to exercise its real tenant/role boundary instead of bypassing it.
+-- Use the second tenant's own active owner for the atomic rollback case. Keeping
+-- one active owner in each shop preserves the Phase 6 last-active-owner invariant.
 RESET ROLE;
-UPDATE staff_users
-SET shop_id=(SELECT v::uuid FROM phase13_csv_values WHERE k='atomic_shop')
-WHERE id=(SELECT v::uuid FROM phase13_csv_values WHERE k='user');
-
 SET LOCAL ROLE authenticated;
 SELECT set_config('request.jwt.claim.role','authenticated',true);
 SELECT set_config(
   'request.jwt.claim.sub',
-  (SELECT v FROM phase13_csv_values WHERE k='user'),
+  (SELECT v FROM phase13_csv_values WHERE k='atomic_user'),
   true
 );
 
