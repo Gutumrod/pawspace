@@ -70,8 +70,17 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          supabase db reset --version 20260220000000
+          # `supabase db reset` applies every migration present, and CLI 2.101.0 has no
+          # usable version target: the global boolean --version shadows `db reset`'s own
+          # --version string flag, so `--version <ts>` silently prints the CLI version and
+          # resets nothing. Stage only the Phase 1 migration for this suite, then restore.
+          held="$(mktemp -d)"
+          restore() { mv "$held"/*.sql supabase/migrations/ 2>/dev/null || true; }
+          trap restore EXIT
+          find supabase/migrations -name '*.sql' ! -name '20260220000000_initial_schema.sql' -exec mv -t "$held" {} +
+          supabase db reset
           supabase test db supabase/tests/phase1_schema.sql
+          restore
           supabase db reset
 
       - name: Run database regression suites
