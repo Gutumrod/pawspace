@@ -1,8 +1,8 @@
 ﻿# Current Status - 2026-09-02
 
 **Product:** Pawstia PMS (PS01)
-**Repository branch:** $branch
-**HEAD before documentation pass:** $head
+**Repository branch:** verify/phase13-closure-2026-09-01
+**HEAD before documentation pass:** 58b8305
 **Purpose:** current-state overlay only. PRD/architecture contracts and historical evidence keep their own authority.
 
 ## Verified Current State

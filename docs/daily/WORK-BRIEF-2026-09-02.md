@@ -2,7 +2,7 @@
 
 **Product:** Pawstia PMS (PS01)
 **Priority / scheduling:** QUEUED VERIFICATION TRACK
-**Baseline:** $branch @ c063592
+**Baseline:** verify/phase13-closure-2026-09-01 @ c063592
 
 ## Current State
 Phase 1-12 are closed. Phase 13 implementation exists but is NOT CLOSED. Verification branch c063592 and Draft PR #4 proved isolated Supabase start, clean migration replay and DB lint, then failed the historical Phase 1 isolation regression before downstream gates ran. Booking Stage 4 prerequisite is closed, so PS-A2 Project B admission work is unblocked to be dispatched, but Pawstia is not yet admitted.
