@@ -66,12 +66,19 @@ jobs:
       - name: Lint database schema
         run: supabase db lint --local --fail-on error
 
+      - name: Verify Phase 1 isolation at its own migration version
+        shell: bash
+        run: |
+          set -euo pipefail
+          supabase db reset --version 20260220000000
+          supabase test db supabase/tests/phase1_schema.sql
+          supabase db reset
+
       - name: Run database regression suites
         shell: bash
         run: |
           set -euo pipefail
           tests=(
-            supabase/tests/phase1_schema.sql
             supabase/tests/phase2_rpc_rls.sql
             supabase/tests/phase3_auth_tenant.sql
             supabase/tests/phase7_google_sync.sql
