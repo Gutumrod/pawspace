@@ -1,12 +1,13 @@
 -- PawSpace Phase 13: authoritative subscription lifecycle + entitlement enforcement.
 -- Provider-agnostic by design. Payment truth is not created in this migration.
 
--- Normalize any legacy 'trial' shops before tightening the constraint.
+-- Replace the Phase 1 check before normalizing legacy `trial` rows. The
+-- historical constraint accepts `trial` but rejects canonical `trialing`, so
+-- the normalization must not run while that constraint remains active.
 -- The prevent_legacy_subscription_status_write trigger does not exist yet at
 -- this point in the migration, so no set_config bypass is needed here.
-UPDATE shops SET subscription_status='trialing' WHERE subscription_status='trial';
-
 ALTER TABLE shops DROP CONSTRAINT IF EXISTS shops_subscription_status_check;
+UPDATE shops SET subscription_status='trialing' WHERE subscription_status='trial';
 ALTER TABLE shops ADD CONSTRAINT shops_subscription_status_check CHECK (
   subscription_status IN (
     'trialing','active','past_due','grace_period','suspended',
