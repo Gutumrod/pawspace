@@ -111,7 +111,7 @@ CREATE TABLE shops (
     google_sheet_id VARCHAR(255) UNIQUE, -- System-bound only after proof-of-control
     google_sheet_claim_token_hash VARCHAR(64), -- System-controlled temporary binding proof
     google_sheet_claim_expires_at TIMESTAMPTZ,
-    subscription_status VARCHAR(50) NOT NULL DEFAULT 'trial' CHECK (subscription_status IN ('trial', 'active', 'past_due')),
+    subscription_status VARCHAR(50) NOT NULL DEFAULT 'trialing' CHECK (subscription_status IN ('trialing', 'active', 'past_due', 'grace_period', 'suspended', 'cancel_at_period_end', 'cancelled', 'expired')),
     created_at TIMESTAMPTZ DEFAULT now(),
     UNIQUE (id),
     UNIQUE (google_sheet_claim_token_hash)

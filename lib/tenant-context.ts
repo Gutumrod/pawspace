@@ -72,7 +72,7 @@ export async function getStaffContext(authenticatedClient: SupabaseClient): Prom
       isActive: Boolean(raw.is_active),
       shopName: raw.shop_name || "",
       shopSlug: raw.shop_slug || "",
-      subscriptionStatus: raw.subscription_status || "trial",
+      subscriptionStatus: raw.subscription_status || "trialing",
     };
   } catch (err) {
     logger.error("Unexpected error in getStaffContext", {

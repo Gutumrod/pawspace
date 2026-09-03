@@ -141,6 +141,31 @@ jobs:
         shell: bash
         run: bash scripts/phase13-concurrency.sh
 
+      - name: Verify legacy 'trial' shop normalizes to 'trialing' through Phase 13 migration
+        shell: bash
+        run: |
+          set -euo pipefail
+          held="$(mktemp -d)"
+          restore() { mv "$held"/*.sql supabase/migrations/ 2>/dev/null || true; }
+          trap restore EXIT
+          # Stage all Phase 13 migrations to held so we can reset to Phase 12 baseline.
+          find supabase/migrations -name '20260825*.sql' -exec mv -t "$held" {} +
+          supabase db reset
+          # Insert a legacy shop with subscription_status='trial' (the Phase 3 contract).
+          psql "$DB_URL" -v ON_ERROR_STOP=1 -c "INSERT INTO shops (name, slug, subscription_status, created_at) VALUES ('Legacy Trial', 'legacy-trial-normalize', 'trial', now() - interval ''5 days'');"
+          # Restore Phase 13 migrations but do NOT reset — apply incrementally to preserve the row.
+          restore
+          trap - EXIT
+          psql "$DB_URL" -v ON_ERROR_STOP=1 -f supabase/migrations/20260825141500_phase13_subscription_lifecycle.sql
+          psql "$DB_URL" -v ON_ERROR_STOP=1 -f supabase/migrations/20260825141600_phase13_subscription_hardening.sql
+          psql "$DB_URL" -v ON_ERROR_STOP=1 -f supabase/migrations/20260825141700_phase13_bootstrap_trialing_remediation.sql
+          result=$(psql "$DB_URL" -tAX -c "SELECT subscription_status FROM shops WHERE slug='legacy-trial-normalize';")
+          if [ "$result" != "trialing" ]; then
+            echo "FAIL: legacy 'trial' shop not normalized to 'trialing' — got '$result'"; exit 1
+          fi
+          echo "PASS: legacy 'trial' shop normalized to 'trialing' through Phase 13 migration"
+          supabase db reset
+
       - name: Run TypeScript regression suites sequentially
         shell: bash
         run: |
