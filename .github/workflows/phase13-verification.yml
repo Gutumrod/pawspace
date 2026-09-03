@@ -152,7 +152,7 @@ jobs:
           find supabase/migrations -name '20260825*.sql' -exec mv -t "$held" {} +
           supabase db reset
           # Insert a legacy shop with subscription_status='trial' (the Phase 3 contract).
-          psql "$DB_URL" -v ON_ERROR_STOP=1 -c "INSERT INTO shops (name, slug, subscription_status, created_at) VALUES ('Legacy Trial', 'legacy-trial-normalize', 'trial', now() - interval ''5 days'');"
+          psql "$DB_URL" -v ON_ERROR_STOP=1 -c "INSERT INTO shops (name, slug, subscription_status, created_at) VALUES ('Legacy Trial', 'legacy-trial-normalize', 'trial', now() - make_interval(days => 5));"
           # Restore Phase 13 migrations but do NOT reset — apply incrementally to preserve the row.
           restore
           trap - EXIT
