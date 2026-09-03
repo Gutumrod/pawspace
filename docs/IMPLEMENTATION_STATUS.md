@@ -1,14 +1,19 @@
 # 📊 Pawstia PMS — Current Implementation Status & Codebase Reality
 
-> **Last reconciled:** 2026-08-28
+> **Last reconciled:** 2026-09-02
 > **Repository:** `Gutumrod/pawspace`
 > **Internal product ID:** `PS01`
-> **Current HEAD at reconciliation:** `2810472`
+> **Current verification HEAD at reconciliation:** `c063592` on `verify/phase13-closure-2026-09-01`
 > **Commercial brand candidate:** `Pawstia PMS — Pet Management System by WSTERA`
 > **Rule:** This file reports current reality only. Historical phase claims belong in `PHASE*_IMPLEMENTATION_EVIDENCE.md`, `REVIEW-*.md`, and handoff files.
 
 ---
 
+## 0. 2026-09-02 verification update
+- Phase 13 remains **NOT CLOSED**. Draft PR #4 verification proved isolated Supabase startup, clean migration replay and DB lint, then failed the historical Phase 1 isolation regression before downstream suites ran.
+- Do not create final Phase 13 evidence or merge the verification PR until the full matrix is green and an independent reviewer passes it.
+- Booking Stage 4 is now complete, so PS-A2 Project B admission is no longer blocked by Booking; Pawstia itself is still **not admitted** until the schema-scoped migration/RLS/grants/denial package is reviewed and explicitly authorized.
+- Portfolio P0a-C1 remains open and still governs when PS01 implementation work may resume.
 ## 1. Current gate status
 
 | Area | Status | Reality |

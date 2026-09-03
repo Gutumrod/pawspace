@@ -1,0 +1,198 @@
+name: Phase 13 verification
+
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - ".github/workflows/phase13-verification.yml"
+      - "supabase/**"
+      - "scripts/phase13-concurrency.sh"
+      - "tests/**"
+      - "app/**"
+      - "lib/**"
+      - "package.json"
+      - "pnpm-lock.yaml"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: phase13-verification-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up pnpm
+        uses: pnpm/action-setup@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Set up Supabase CLI
+        uses: supabase/setup-cli@v1
+        with:
+          version: 2.101.0
+
+      - name: Start isolated Supabase stack
+        run: supabase start
+
+      - name: Export isolated Supabase test environment
+        shell: bash
+        run: |
+          eval "$(supabase status -o env)"
+          echo "NEXT_PUBLIC_SUPABASE_URL=$API_URL" >> "$GITHUB_ENV"
+          echo "NEXT_PUBLIC_SUPABASE_ANON_KEY=$ANON_KEY" >> "$GITHUB_ENV"
+          echo "SUPABASE_SERVICE_ROLE_KEY=$SERVICE_ROLE_KEY" >> "$GITHUB_ENV"
+          echo "API_URL=$API_URL" >> "$GITHUB_ENV"
+          echo "ANON_KEY=$ANON_KEY" >> "$GITHUB_ENV"
+          echo "SERVICE_ROLE_KEY=$SERVICE_ROLE_KEY" >> "$GITHUB_ENV"
+          echo "DB_URL=$DB_URL" >> "$GITHUB_ENV"
+
+      - name: Replay migrations from a clean database
+        run: supabase db reset
+
+      - name: Lint database schema
+        run: supabase db lint --local --fail-on error
+
+      - name: Verify Phase 1 isolation at its own migration version
+        shell: bash
+        run: |
+          set -euo pipefail
+          # `supabase db reset` applies every migration present, and CLI 2.101.0 has no
+          # usable version target: the global boolean --version shadows `db reset`'s own
+          # --version string flag, so `--version <ts>` silently prints the CLI version and
+          # resets nothing. Stage only the Phase 1 migration for this suite, then restore.
+          held="$(mktemp -d)"
+          restore() { mv "$held"/*.sql supabase/migrations/ 2>/dev/null || true; }
+          trap restore EXIT
+          find supabase/migrations -name '*.sql' ! -name '20260220000000_initial_schema.sql' -exec mv -t "$held" {} +
+          supabase db reset
+          psql "$DB_URL" -v ON_ERROR_STOP=1 -f supabase/tests/phase1_schema.sql
+          restore
+          supabase db reset
+
+      - name: Verify Phase 2 gateway regression at its own migration version
+        shell: bash
+        run: |
+          set -euo pipefail
+          held="$(mktemp -d)"
+          restore() { mv "$held"/*.sql supabase/migrations/ 2>/dev/null || true; }
+          trap restore EXIT
+          find supabase/migrations -name '*.sql' \
+            ! -name '20260220000000_initial_schema.sql' \
+            ! -name '20260820020000_phase2_authoritative_gateways.sql' \
+            -exec mv -t "$held" {} +
+          supabase db reset
+          psql "$DB_URL" -v ON_ERROR_STOP=1 -f supabase/tests/phase2_rpc_rls.sql
+          restore
+          trap - EXIT
+
+      - name: Verify Phase 3 auth and tenant regression at its own migration version
+        shell: bash
+        run: |
+          set -euo pipefail
+          held="$(mktemp -d)"
+          restore() { mv "$held"/*.sql supabase/migrations/ 2>/dev/null || true; }
+          trap restore EXIT
+          find supabase/migrations -name '*.sql' \
+            ! -name '20260220000000_initial_schema.sql' \
+            ! -name '20260820020000_phase2_authoritative_gateways.sql' \
+            ! -name '20260820030000_phase3_auth_tenant.sql' \
+            -exec mv -t "$held" {} +
+          supabase db reset
+          psql "$DB_URL" -v ON_ERROR_STOP=1 -f supabase/tests/phase3_auth_tenant.sql
+          restore
+          trap - EXIT
+          supabase db reset
+
+      - name: Run current-schema database regression suites
+        shell: bash
+        run: |
+          set -euo pipefail
+          # Phase 7 onwards are current-schema pgTAP suites. Historical Phase 1-3
+          # contracts are verified above against the migration boundary where they were defined.
+          pgtap_tests=(
+            supabase/tests/phase7_google_sync.sql
+            supabase/tests/phase8_camera_access.sql
+            supabase/tests/phase9_commercial_entitlements.sql
+            supabase/tests/phase13_subscription_lifecycle.sql
+            supabase/tests/phase13_lifecycle_matrix.sql
+            supabase/tests/phase13_csv_atomicity.sql
+          )
+          for test in "${pgtap_tests[@]}"; do
+            echo "=== $test (pgTAP) ==="
+            supabase test db "$test"
+          done
+
+      - name: Run Phase 13 quota concurrency races
+        shell: bash
+        run: bash scripts/phase13-concurrency.sh
+
+      - name: Verify legacy 'trial' shop normalizes to 'trialing' through Phase 13 migration
+        shell: bash
+        run: |
+          set -euo pipefail
+          held="$(mktemp -d)"
+          restore() { mv "$held"/*.sql supabase/migrations/ 2>/dev/null || true; }
+          trap restore EXIT
+          # Stage all Phase 13 migrations to held so we can reset to Phase 12 baseline.
+          find supabase/migrations -name '20260825*.sql' -exec mv -t "$held" {} +
+          supabase db reset
+          # Insert a legacy shop with subscription_status='trial' (the Phase 3 contract).
+          psql "$DB_URL" -v ON_ERROR_STOP=1 -c "INSERT INTO shops (name, slug, subscription_status, created_at) VALUES ('Legacy Trial', 'legacy-trial-normalize', 'trial', now() - make_interval(days => 5));"
+          # Restore Phase 13 migrations but do NOT reset — apply incrementally to preserve the row.
+          restore
+          trap - EXIT
+          psql "$DB_URL" -v ON_ERROR_STOP=1 -f supabase/migrations/20260825141500_phase13_subscription_lifecycle.sql
+          psql "$DB_URL" -v ON_ERROR_STOP=1 -f supabase/migrations/20260825141600_phase13_subscription_hardening.sql
+          psql "$DB_URL" -v ON_ERROR_STOP=1 -f supabase/migrations/20260825141700_phase13_bootstrap_trialing_remediation.sql
+          result=$(psql "$DB_URL" -tAX -c "SELECT subscription_status FROM shops WHERE slug='legacy-trial-normalize';")
+          if [ "$result" != "trialing" ]; then
+            echo "FAIL: legacy 'trial' shop not normalized to 'trialing' — got '$result'"; exit 1
+          fi
+          echo "PASS: legacy 'trial' shop normalized to 'trialing' through Phase 13 migration"
+          supabase db reset
+
+      - name: Run TypeScript regression suites sequentially
+        shell: bash
+        run: |
+          set -euo pipefail
+          for test in tests/*.test.ts; do
+            echo "=== $test ==="
+            npx --yes tsx@4.23.13 --test "$test"
+          done
+
+      - name: Install Playwright Chromium
+        run: pnpm exec playwright install --with-deps chromium
+
+      - name: Run Phase 10 browser regression
+        run: pnpm test:e2e
+
+      - name: Typecheck
+        run: pnpm exec tsc --noEmit
+
+      - name: Lint application
+        run: pnpm lint
+
+      - name: Build application
+        run: pnpm build
+
+      - name: Check diff whitespace
+        run: git diff --check
+
+      - name: Stop isolated Supabase stack
+        if: always()
+        run: supabase stop --no-backup
