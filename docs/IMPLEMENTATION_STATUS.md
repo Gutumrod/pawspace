@@ -1,32 +1,35 @@
 # 📊 Pawstia PMS — Current Implementation Status & Codebase Reality
 
-> **Last reconciled:** 2026-09-02
+> **Last reconciled:** 2026-09-06
 > **Repository:** `Gutumrod/pawspace`
 > **Internal product ID:** `PS01`
-> **Current verification HEAD at reconciliation:** `c063592` on `verify/phase13-closure-2026-09-01`
+> **Current verification HEAD at reconciliation:** `fdd10e7` on `verify/phase13-closure-2026-09-01`
 > **Commercial brand candidate:** `Pawstia PMS — Pet Management System by WSTERA`
 > **Rule:** This file reports current reality only. Historical phase claims belong in `PHASE*_IMPLEMENTATION_EVIDENCE.md`, `REVIEW-*.md`, and handoff files.
 
 ---
 
-## 0. 2026-09-02 verification update
-- Phase 13 remains **NOT CLOSED**. Draft PR #4 verification proved isolated Supabase startup, clean migration replay and DB lint, then failed the historical Phase 1 isolation regression before downstream suites ran.
-- Do not create final Phase 13 evidence or merge the verification PR until the full matrix is green and an independent reviewer passes it.
-- Booking Stage 4 is now complete, so PS-A2 Project B admission is no longer blocked by Booking; Pawstia itself is still **not admitted** until the schema-scoped migration/RLS/grants/denial package is reviewed and explicitly authorized.
-- Portfolio P0a-C1 remains open and still governs when PS01 implementation work may resume.
+## 0. 2026-09-06 verification update
+- Phase 13 is **CLOSED**. The full isolated Supabase verification matrix passed in CI run `33743691064`, and final evidence is committed in `PHASE13_IMPLEMENTATION_EVIDENCE.md` (independent closure date 2026-09-03).
+- Historical note (kept as provenance): prior run `33494605562` failed the historical Phase 1 isolation regression. That defect was remediated (legacy `trial`→`trialing` normalization order fixed) and the full matrix re-passed in the closure run; the regression contract was not weakened.
+- Owner direction 2026-09-06 = **BUILD-TO-SELL**. Council Product Gate PASS and Business/Market Gate PASS for PS01. Immediate ticket is `PS-SR-01` (canonical landing/reconciliation of the closed Phase 13 evidence); it is a documentation reconciliation, not a verification rerun.
+- Booking Stage 4 is complete; `PS-A2` Project B admission remains a separate explicitly-tracked track.
+- Portfolio `P0a-C1` is not re-decided by this reconciliation.
+
 ## 1. Current gate status
 
 | Area | Status | Reality |
 |---|---|---|
 | Engineering Phase 1–12 | **CLOSED / previously reviewer-verified** | Dedicated evidence/review files exist for the delivered phases |
-| Engineering Phase 13 | **IMPLEMENTED — RE-VERIFICATION REQUIRED** | Committed at `97c9fd6`; lifecycle, entitlement, quotas, audit, and commercial mutation enforcement exist |
-| Phase 13 evidence | **MISSING FINAL EVIDENCE** | `PHASE13_IMPLEMENTATION_EVIDENCE.md` does not yet exist |
-| Payment collection | **NOT IMPLEMENTED** | No Stripe/PromptPay/SlipOK/payment provider contract |
+| Engineering Phase 13 | **CLOSED** | Independent evidence in `PHASE13_IMPLEMENTATION_EVIDENCE.md`; CI run `33743691064` passed the full isolated matrix |
+| Phase 13 evidence | **PRESENT** | `PHASE13_IMPLEMENTATION_EVIDENCE.md` exists (closure dated 2026-09-03) |
+| Payment collection | **NOT IMPLEMENTED** | No Stripe/PromptPay/SlipOK/payment provider contract; not a Phase 13 blocker |
 | Production deployment | **NOT VERIFIED** | No commercial-production gate has been closed |
-| Closed Beta business validation | **NOT COMPLETED** | Technical readiness is not evidence of real-store adoption |
+| Closed Beta business validation | **NOT COMPLETED** | Technical readiness is not evidence of real-store adoption; downstream of PS-SR-04 |
 | Brand | **CANDIDATE LOCKED** | `Pawstia PMS`; internal identifiers remain `PawSpace` / `PS01` for now |
 
 ---
+
 ## 2. Implemented product capabilities
 
 - Supabase Auth + tenant/staff authorization and hardened RLS/RPC boundaries.
@@ -48,38 +51,34 @@
 
 Implemented in:
 - `supabase/migrations/20260825141500_phase13_subscription_lifecycle.sql`
-- `supabase/migrations/20260825141600_phase13_subscription_hardening.sql`
+- `supabase/migrations/20260825141700_phase13_bootstrap_trialing_remediation.sql`
 - `supabase/tests/phase13_subscription_lifecycle.sql`
+- `supabase/tests/phase13_lifecycle_matrix.sql`
+- `supabase/tests/phase13_csv_atomicity.sql`
 - `lib/dashboard-service.ts`
 - `app/dashboard/page.tsx`
+
 Implemented concepts include:
 - one authoritative `shop_subscriptions` record per shop;
 - 8 lifecycle states;
-- compatibility protection for legacy `shops.subscription_status`;
+- compatibility protection for legacy `shops.subscription_status` (legacy `trial` normalized to canonical `trialing`);
 - package / offer / billing interval authority;
 - Founding Member continuity;
 - commercial-access resolver using authoritative DB time;
 - service-role lifecycle/package mutation RPCs;
 - subscription audit log;
 - database-level commercial mutation blocking;
-- room/pet quota triggers;
+- room/pet quota triggers (with concurrency + CSV atomicity coverage);
 - owner/manager commercial status DTO/UI.
 
-**Not enough to mark Phase 13 CLOSED:** the current dedicated SQL test does not yet prove the entire mandatory matrix from the Phase 13 brief.
-
-Missing or insufficiently evidenced areas include:
-- 9→10→11 room boundary;
-- 299→300→301 pet boundary;
-- concurrent room/pet quota races;
-- over-quota CSV atomic rollback and duplicate handling under Phase 13;
-- complete lifecycle transition/timing matrix;
-- tenant/role negative matrix for every commercial mutation path;
-- full audit immutability probes;
-- Pro/Enterprise/Founding unlimited regression;
-- fresh Phase 9 + Phase 12 + affected regressions;
-- final evidence document and independent gate.
+**Phase 13 is CLOSED.** The dedicated SQL tests plus CI run `33743691064` proved the mandatory matrix from the Phase 13
+brief against an isolated Supabase stack: fresh migration replay + DB lint, Phase 1/2/3 historical-boundary regressions,
+current-schema DB suites, quota concurrency races, CSV atomicity, lifecycle transition/timing matrix, legacy
+`trial`→`trialing` incremental upgrade, Phase 7 worker-claim regression, Phase 10 browser E2E, and typecheck/lint/build/
+`git diff --check`. No production migration was applied; this is isolated CI evidence, not production deployment.
 
 ---
+
 ## 4. Integration reality
 
 ### LINE
@@ -87,6 +86,10 @@ Current production-intent code uses per-shop server-side configuration from:
 `LINE_CHANNEL_ACCESS_TOKENS_JSON[shopId]`
 
 This is server-only but is **not the same claim as Supabase Vault**. Vault remains a target secret-management option until actually adopted and verified.
+
+Owner decision BM-2 (2026-09-04 Council): LINE OA is store-owned / merchant-owned for closed beta and paid production;
+merchant bears OA/message charges; Pawstia provides integration/setup support and discloses cost clearly. WSTERA/Pawstia
+OA line is for internal development / controlled demo / non-commercial test only.
 
 ### Google Sheets
 A tenant-specific `shops.google_sheet_id` plus proof-of-control flow and trusted service credentials are implemented. Production credentials still require environment/secret-management operational hardening.
@@ -100,7 +103,9 @@ Bounded public visitor-camera capability already exists from Engineering Phase 8
 
 On 2026-08-28, Windows local Supabase verification is blocked because Docker Engine is unavailable on the PC. Due prior machine-instability concerns, Windows Docker is not a required path.
 
-Preferred Phase 13 verification:
+Phase 13 verification used an ephemeral GitHub Actions Ubuntu runner successfully (CI run `33743691064`).
+
+Preferred verification path:
 1. GitHub Actions ephemeral Ubuntu runner for supabase db start, supabase test db, TypeScript regressions and static gates;
 2. isolated Supabase cloud staging/test project for remote integration/E2E validation;
 3. macOS local stack when available;
@@ -108,17 +113,16 @@ Preferred Phase 13 verification:
 
 Never run destructive reset/test commands against production.
 
-## 6. Next gates
+## 6. Next gates (PS-SR-02 onward)
 
-1. Complete documentation reconciliation.
-2. Build isolated verification environment.
-3. Expand Phase 13 mandatory tests.
-4. Execute fresh migrations + Phase 13 + regressions.
-5. Create `PHASE13_IMPLEMENTATION_EVIDENCE.md`.
-6. Independent review and close Phase 13.
-7. Implement production operations: staging, deploy/rollback, monitoring, backup/restore, incident/support.
-8. Run real-store Closed Beta.
-9. Integrate payment only after those gates.
+Owner direction 2026-09-06 = BUILD-TO-SELL. Phase 13 landing is the completed `PS-SR-01` reconciliation; execute one
+immediate ticket at a time with Secretary gate review between tickets.
+
+1. **PS-SR-02** — Staging + release engineering: isolated staging, migration pipeline, environment separation, deploy/rollback, two-tenant smoke, release record. No destructive production reset.
+2. **PS-SR-03** — Integration resilience + recovery: LINE delivery/retry/reconciliation, Sheets recovery, LIFF identity, storage/media recovery, observability, backup/restore, incident runbooks under injected failure.
+3. **PS-SR-04** — Controlled real-store Closed Beta: start with 1 store, gated expansion toward first 10; measure onboarding, booking integrity, staff learning, LINE/Sheets reliability, support burden, incidents, willingness-to-pay.
+4. **PS-SR-05** — Commercial/payment contract lock: after beta evidence, lock provider/rail, trial expiry, upgrade/downgrade, failed-payment grace, cancel/refund, Founding continuity, reconciliation, offboarding/export/retention.
+5. **PS-SR-06** — Payment collection + paid launch: only after PS-SR-05 approval; signed/idempotent events, authoritative subscription transitions, replay/out-of-order tests, controlled payment/refund rehearsal, support, Owner GO.
 
 ---
 
@@ -131,5 +135,6 @@ Never run destructive reset/test commands against production.
 5. `docs/IMPLEMENTATION_STATUS.md` for current implementation reality
 6. phase briefs for execution contracts
 7. evidence/review files for historical verification
+8. `docs/BUILD-TO-SELL-EXECUTION-2026-09-06.md` for the current build-to-sell execution wave
 
 When docs and executable code disagree, do not silently promote code claims. Reconcile the contract and rerun the relevant executable gate.
