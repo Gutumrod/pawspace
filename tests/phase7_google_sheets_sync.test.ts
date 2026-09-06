@@ -143,7 +143,12 @@ async function run() {
 
     const queueId = crypto.randomUUID();
     const { error: queueError } = await admin.from("sync_queue").insert({
+      // This suite shares the isolated database with earlier TypeScript suites.
+      // The worker claims the globally oldest eligible event, so make this
+      // fixture's target deterministically first without deleting other suites'
+      // queue records.
       id: queueId, shop_id: shop1, entity_type: "pet_customer", entity_id: pet1, operation: "UPSERT", payload: { stale: true },
+      next_attempt_at: "0001-01-01T00:00:00.000Z", created_at: "0001-01-01T00:00:00.000Z",
     });
     if (queueError) throw new Error(`queue seed failed: ${queueError.message}`);
     const concurrentClaims = await Promise.all([

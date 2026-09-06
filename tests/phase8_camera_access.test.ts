@@ -109,7 +109,8 @@ async function run() {
   check(verified !== null && !cameraSessionMatchesShop(verified, shop2), "Cross-tenant camera access is rejected by session binding");
 
   const tamperedParts = signed.token.split(".");
-  const tampered = `${tamperedParts[0]}.${tamperedParts[1].slice(0, -1)}${tamperedParts[1].endsWith("A") ? "B" : "A"}`;
+  const tamperedSignature = `${tamperedParts[1].startsWith("A") ? "B" : "A"}${tamperedParts[1].slice(1)}`;
+  const tampered = `${tamperedParts[0]}.${tamperedSignature}`;
   check(await verifyCameraSession(tampered, signingSecret, issuedAtMs + 1000) === null, "Tampered camera session signature is rejected");
   check(
     await verifyCameraSession(signed.token, "different-camera-signing-secret-32-bytes-minimum", issuedAtMs + 1000) === null,
