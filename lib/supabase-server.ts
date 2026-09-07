@@ -2,6 +2,7 @@ import "server-only";
 import { createClient, type SupabaseClient, type User } from "@supabase/supabase-js";
 import { cookies } from "next/headers";
 import { requirePublicSupabaseEnv } from "./env";
+import { ps01DatabaseOptions } from "./ps01-schema";
 
 export const PAWSPACE_ACCESS_TOKEN_COOKIE = "pawspace_access_token";
 export const PAWSPACE_REFRESH_TOKEN_COOKIE = "pawspace_refresh_token";
@@ -16,6 +17,7 @@ export function getSupabaseServerClient(accessToken?: string): SupabaseClient {
   const env = requirePublicSupabaseEnv();
 
   return createClient(env.url, env.anonKey, {
+    ...ps01DatabaseOptions(),
     auth: {
       persistSession: false,
       autoRefreshToken: false,
@@ -23,7 +25,7 @@ export function getSupabaseServerClient(accessToken?: string): SupabaseClient {
     global: {
       headers: accessToken ? { Authorization: `Bearer ${accessToken}` } : {},
     },
-  });
+  }) as unknown as SupabaseClient;
 }
 
 export interface ServerSessionResult {

@@ -1,4 +1,5 @@
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
+import { ps01DatabaseOptions } from "./ps01-schema";
 
 /**
  * Browser-only Supabase client for the invite/reset password link flow.
@@ -13,6 +14,7 @@ export function getSupabaseBrowserClient(): SupabaseClient {
     throw new Error("Missing NEXT_PUBLIC_SUPABASE_URL or NEXT_PUBLIC_SUPABASE_ANON_KEY.");
   }
   return createClient(url, anonKey, {
+    ...ps01DatabaseOptions(),
     auth: { persistSession: true, autoRefreshToken: false, detectSessionInUrl: true },
-  });
+  }) as unknown as SupabaseClient;
 }

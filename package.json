@@ -7,7 +7,9 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "test:e2e": "node ./scripts/phase10-e2e.mjs"
+    "test:e2e": "node ./scripts/phase10-e2e.mjs",
+    "build:ps01-baseline": "node ./scripts/generate-ps01-shared-runtime-baseline.mjs",
+    "test:ps01-boundary": "node ./scripts/verify-ps01-shared-runtime-boundary.mjs"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.112.3",

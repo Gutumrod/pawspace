@@ -272,7 +272,7 @@ export default function OnboardingClient({
                     Closed Beta Readiness Checklist
                   </h2>
                   <p className="dashboard-copy">
-                    Deterministic evaluation for 5–10 Pilot Hotel onboarding.
+                    Deterministic evaluation for the 1-store Closed Beta core.
                   </p>
                 </div>
                 <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>

@@ -207,7 +207,7 @@ export async function evaluatePilotReadiness(
       title: "LINE Official Account & Daily Reports",
       description: "LINE OA ID and server channel token configured for sending Daily Reports.",
       isReady: isLineOperationallyReady,
-      isCritical: true,
+      isCritical: false,
       currentValue: lineCurrentValue,
       remediation: lineRemediation,
     },
@@ -217,7 +217,7 @@ export async function evaluatePilotReadiness(
       title: "Google Sheets Sync",
       description: "Pet-centric real-time export replica bound to Google Sheets with valid server credentials.",
       isReady: isGoogleSheetsOperationallyReady,
-      isCritical: true,
+      isCritical: false,
       currentValue: googleCurrentValue,
       remediation: googleRemediation,
     },
@@ -235,10 +235,11 @@ export async function evaluatePilotReadiness(
 
   const criticalItems = items.filter((i) => i.isCritical);
   const criticalPassed = criticalItems.filter((i) => i.isReady).length;
-  const totalPassed = items.filter((i) => i.isReady).length;
 
   const isPilotReady = criticalPassed === criticalItems.length;
-  const readinessPercentage = Math.round((totalPassed / items.length) * 100);
+  const readinessPercentage = criticalItems.length === 0
+    ? 100
+    : Math.round((criticalPassed / criticalItems.length) * 100);
 
   const blockingIssues: string[] = [];
   const recommendations: string[] = [];

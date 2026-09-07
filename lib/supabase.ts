@@ -1,4 +1,5 @@
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
+import { ps01DatabaseOptions } from "./ps01-schema";
 
 let browserClient: SupabaseClient | null = null;
 
@@ -13,8 +14,8 @@ export function getSupabaseBrowserClient() {
   browserClient = createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL as string,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY as string,
-    { auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true } },
-  );
+    { ...ps01DatabaseOptions(), auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true } },
+  ) as unknown as SupabaseClient;
   return browserClient;
 }
 

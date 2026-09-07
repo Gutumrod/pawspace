@@ -1,7 +1,8 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { PreparedDailyReportImage } from "./daily-report-media";
+import { PS01_DAILY_REPORT_BUCKET } from "./ps01-schema";
 
-export const DAILY_REPORT_BUCKET = "daily-report-photos";
+export const DAILY_REPORT_BUCKET = PS01_DAILY_REPORT_BUCKET;
 
 type UploadIdentity = {
   shopId: string;

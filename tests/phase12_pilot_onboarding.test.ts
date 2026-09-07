@@ -591,22 +591,27 @@ Somchai,,0812345678,,Buster,dog,Golden Retriever,male,2020-03-01,28.0,High energ
   // 8. Operational Integration Readiness Tests (Finding 1 & 6)
   console.log("\n8. Testing Operational Integration Readiness & Invariants...");
 
-  // 8.1 Negative Test: Missing LINE Token or Google Sheet configuration blocks PILOT READY
+  // 8.1 Optional integration test: missing LINE/Google configuration must not block the 1-store Closed Beta core.
   delete process.env.LINE_CHANNEL_ACCESS_TOKENS_JSON;
   delete process.env.GOOGLE_SERVICE_ACCOUNT_JSON;
 
   const negativeReadinessA = await evaluatePilotReadiness(ownerA.client);
   check(
-    negativeReadinessA.isPilotReady === false,
-    "Shop with LINE OA configured but missing server LINE token is BLOCKED (isPilotReady = false)"
+    negativeReadinessA.isPilotReady === true,
+    "Core-ready shop remains PILOT READY when optional LINE/Google integrations are not configured"
   );
   check(
-    negativeReadinessA.blockingIssues.some((issue) => issue.includes("LINE Official Account")),
-    "Blocking issues explicitly include LINE OA token prerequisite"
+    negativeReadinessA.readinessPercentage === 100,
+    "Readiness percentage reflects critical Closed Beta items only"
   );
   check(
-    negativeReadinessA.blockingIssues.some((issue) => issue.includes("Google Sheets Sync")),
-    "Blocking issues explicitly include Google Sheets prerequisite"
+    negativeReadinessA.blockingIssues.every((issue) => !issue.includes("LINE Official Account") && !issue.includes("Google Sheets Sync")),
+    "Optional LINE/Google integrations never appear as blocking issues"
+  );
+  check(
+    negativeReadinessA.recommendations.some((issue) => issue.includes("LINE Official Account")) &&
+      negativeReadinessA.recommendations.some((issue) => issue.includes("Google Sheets Sync")),
+    "Missing LINE/Google integrations remain visible as recommendations"
   );
 
   // 8.2 Positive Test: Fully operationally configured shop achieves PILOT READY
@@ -634,9 +639,9 @@ Somchai,,0812345678,,Buster,dog,Golden Retriever,male,2020-03-01,28.0,High energ
     console.log("readyA items:", readyA.items.map(i => ({ id: i.id, isReady: i.isReady, current: i.currentValue })));
   }
   check(readyA.isPilotReady === true, "Fully configured shop evaluates as TECHNICAL PILOT READY (isPilotReady = true)");
-  check(readyA.readinessPercentage === 100, "Readiness percentage is 100% when all critical integrations are ready");
-  check(readyA.criticalPassed === readyA.criticalTotal, "Passed all 7/7 critical readiness items");
-  check(readyA.blockingIssues.length === 0, "Zero blocking issues when operationally ready");
+  check(readyA.readinessPercentage === 100, "Readiness percentage is 100% when all critical Closed Beta items are ready");
+  check(readyA.criticalPassed === 5 && readyA.criticalTotal === 5, "Passed all 5/5 critical Closed Beta readiness items");
+  check(readyA.blockingIssues.length === 0, "Zero blocking issues when core operations are ready");
 
   // Verify secret safety: readiness items do not expose secrets
   const allCurrentValues = JSON.stringify(readyA.items.map((i) => i.currentValue));
@@ -655,8 +660,8 @@ Somchai,,0812345678,,Buster,dog,Golden Retriever,male,2020-03-01,28.0,High energ
     "Tenant B explicitly flags missing room inventory as blocking issue"
   );
   check(
-    readinessB.blockingIssues.some((issue) => issue.includes("LINE Official Account")),
-    "Tenant B does not inherit Tenant A LINE token (tenant isolation in readiness check)"
+    readinessB.recommendations.some((issue) => issue.includes("LINE Official Account")),
+    "Tenant B does not inherit Tenant A LINE token; missing LINE remains tenant-scoped recommendation"
   );
   check(
     readyA.shopId !== readinessB.shopId && readyA.shopId === shopAId,

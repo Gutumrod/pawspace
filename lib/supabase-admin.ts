@@ -1,6 +1,7 @@
 import "server-only";
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import { requireAdminSupabaseEnv } from "./env";
+import { ps01DatabaseOptions } from "./ps01-schema";
 
 let adminClient: SupabaseClient | null = null;
 
@@ -19,11 +20,12 @@ export function getSupabaseAdminClient(): SupabaseClient {
   const env = requireAdminSupabaseEnv();
 
   adminClient = createClient(env.url, env.serviceRoleKey, {
+    ...ps01DatabaseOptions(),
     auth: {
       autoRefreshToken: false,
       persistSession: false,
     },
-  });
+  }) as unknown as SupabaseClient;
 
   return adminClient;
 }
