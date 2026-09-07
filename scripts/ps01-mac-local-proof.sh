@@ -53,6 +53,14 @@ s = re.sub(r'^project_id = ".*"$', f'project_id = "{project_id}"', s, flags=re.M
 s = re.sub(r'^schemas = \[.*\]$', 'schemas = ["ps01", "graphql_public"]', s, flags=re.M)
 s = re.sub(r'^extra_search_path = \[.*\]$', 'extra_search_path = ["ps01", "extensions"]', s, flags=re.M)
 s = re.sub(r'^site_url = ".*"$', 'site_url = "http://127.0.0.1:3100"', s, flags=re.M)
+# Dedicated proof ports: never collide with existing PawSpace (5432x) or other products.
+s = re.sub(r'^port = 54321$', 'port = 54421', s, count=1, flags=re.M)
+s = re.sub(r'^port = 54322$', 'port = 54422', s, count=1, flags=re.M)
+s = re.sub(r'^shadow_port = 54320$', 'shadow_port = 54420', s, count=1, flags=re.M)
+s = re.sub(r'^port = 54329$', 'port = 54429', s, count=1, flags=re.M)
+s = re.sub(r'^port = 54323$', 'port = 54423', s, count=1, flags=re.M)
+s = re.sub(r'^port = 54324$', 'port = 54424', s, count=1, flags=re.M)
+s = re.sub(r'^port = 54327$', 'port = 54427', s, count=1, flags=re.M)
 p.write_text(s)
 PY
   cat > "$SANDBOX/supabase/migrations/00000000000000_platform_prereqs.sql" <<'SQL'

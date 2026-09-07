@@ -1,6 +1,6 @@
 import fs from "node:fs";
 import path from "node:path";
-import { execFileSync, spawnSync } from "node:child_process";
+import { execFileSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
@@ -49,13 +49,20 @@ for (const rel of coreFiles) {
   }
 }
 
-const sourceRoots = ["app", "lib"];
-for (const sourceRoot of sourceRoots) {
-  const result = spawnSync("rg", ["-n", "\\.schema\\(", sourceRoot], { cwd: root, encoding: "utf8" });
-  if (result.status === 0 && result.stdout.trim()) {
-    fail(`Explicit schema override found outside PS01 client boundary:\n${result.stdout}`);
+function walkFiles(dir) {
+  return fs.readdirSync(dir, { withFileTypes: true }).flatMap((entry) => {
+    const full = path.join(dir, entry.name);
+    return entry.isDirectory() ? walkFiles(full) : [full];
+  });
+}
+for (const sourceRoot of ["app", "lib"]) {
+  for (const full of walkFiles(path.join(root, sourceRoot))) {
+    if (!/\.(?:ts|tsx|js|jsx|mjs|cjs)$/.test(full)) continue;
+    const text = fs.readFileSync(full, "utf8");
+    if (text.includes(".schema(")) {
+      fail(`Explicit schema override found outside PS01 client boundary: ${path.relative(root, full)}`);
+    }
   }
-  if (result.status !== 0 && result.status !== 1) fail(`rg failed while checking ${sourceRoot}.`);
 }
 const markerCount = (baseline.match(/-- BEGIN LEGACY SOURCE:/g) || []).length;
 if (markerCount !== 13) fail(`Expected 13 legacy source markers, found ${markerCount}.`);

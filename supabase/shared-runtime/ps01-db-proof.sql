@@ -100,36 +100,29 @@ BEGIN
   END IF;
 END $$;
 
-SET ROLE ps01_runtime;
-SELECT count(*) AS ps01_runtime_can_read_shops FROM ps01.shops;
 DO $$
+DECLARE r record;
 BEGIN
-  BEGIN
-    EXECUTE 'SELECT count(*) FROM ps01_foreign_probe.secret_probe';
-    RAISE EXCEPTION 'PS01_PROOF: ps01_runtime crossed foreign schema boundary';
-  EXCEPTION WHEN insufficient_privilege THEN
-    NULL;
-  END;
-  BEGIN
-    EXECUTE 'CREATE TABLE public.ps01_runtime_escape_probe(id integer)';
-    RAISE EXCEPTION 'PS01_PROOF: ps01_runtime can CREATE in public';
-  EXCEPTION WHEN insufficient_privilege THEN
-    NULL;
-  END;
+  SELECT rolsuper, rolcreaterole, rolcreatedb, rolcanlogin, rolbypassrls
+  INTO r FROM pg_roles WHERE rolname = 'ps01_runtime';
+  IF r.rolsuper OR r.rolcreaterole OR r.rolcreatedb OR r.rolcanlogin OR r.rolbypassrls THEN
+    RAISE EXCEPTION 'PS01_PROOF: ps01_runtime has unsafe role attributes';
+  END IF;
+  IF NOT has_schema_privilege('ps01_runtime', 'ps01', 'USAGE') THEN
+    RAISE EXCEPTION 'PS01_PROOF: ps01_runtime lacks PS01 schema USAGE';
+  END IF;
+  IF has_schema_privilege('ps01_runtime', 'ps01_foreign_probe', 'USAGE')
+     OR has_schema_privilege('ps01_runtime', 'ps01_foreign_probe', 'CREATE')
+     OR has_table_privilege('ps01_runtime', 'ps01_foreign_probe.secret_probe', 'SELECT')
+     OR has_table_privilege('ps01_runtime', 'ps01_foreign_probe.secret_probe', 'INSERT')
+     OR has_schema_privilege('ps01_runtime', 'public', 'CREATE') THEN
+    RAISE EXCEPTION 'PS01_PROOF: ps01_runtime crossed foreign/public boundary';
+  END IF;
+  IF has_schema_privilege('ps01_foreign_probe', 'ps01', 'USAGE')
+     OR has_table_privilege('ps01_foreign_probe', 'ps01.shops', 'SELECT') THEN
+    RAISE EXCEPTION 'PS01_PROOF: foreign role can access PS01';
+  END IF;
 END $$;
-RESET ROLE;
-
-SET ROLE ps01_foreign_probe;
-DO $$
-BEGIN
-  BEGIN
-    EXECUTE 'SELECT count(*) FROM ps01.shops';
-    RAISE EXCEPTION 'PS01_PROOF: foreign role can read PS01';
-  EXCEPTION WHEN insufficient_privilege THEN
-    NULL;
-  END;
-END $$;
-RESET ROLE;
 DROP SCHEMA ps01_foreign_probe CASCADE;
 DROP ROLE ps01_foreign_probe;
 

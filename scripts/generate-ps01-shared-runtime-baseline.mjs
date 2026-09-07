@@ -18,7 +18,7 @@ if (files.length !== 13) {
 
 const sources = files.map((name) => ({
   name,
-  text: fs.readFileSync(path.join(migrationDir, name), "utf8"),
+  text: fs.readFileSync(path.join(migrationDir, name), "utf8").replace(/\r\n/g, "\n"),
 }));
 
 const sourceHash = crypto.createHash("sha256")

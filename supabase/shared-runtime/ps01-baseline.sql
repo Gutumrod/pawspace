@@ -1,6 +1,6 @@
 -- GENERATED FILE. DO NOT EDIT DIRECTLY.
 -- PS01 shared-runtime baseline compiled from the 13 canonical historical migrations.
--- Canonical source SHA-256: 0ee8857ae05aecc732bf92f6bdca980ae3b0547ba7eeca7e16a0cab575ccbba5
+-- Canonical source SHA-256: 9293804a19e57457ace3ece49c3b6ab2ad03f12962668b1cfffb7047b783e337
 
 DO $$
 DECLARE missing text;
@@ -4368,5 +4368,5 @@ CREATE TABLE IF NOT EXISTS ps01_internal.schema_migrations (
 REVOKE ALL ON TABLE ps01_internal.schema_migrations FROM PUBLIC, anon, authenticated, service_role;
 GRANT SELECT, INSERT ON TABLE ps01_internal.schema_migrations TO ps01_runtime;
 INSERT INTO ps01_internal.schema_migrations (source_hash, migration_count)
-VALUES ('0ee8857ae05aecc732bf92f6bdca980ae3b0547ba7eeca7e16a0cab575ccbba5', 13)
+VALUES ('9293804a19e57457ace3ece49c3b6ab2ad03f12962668b1cfffb7047b783e337', 13)
 ON CONFLICT (source_hash) DO NOTHING;
