@@ -1,9 +1,9 @@
-# PS01 Shared-Runtime Isolation Contract
+﻿# PS01 Shared-Runtime Isolation Contract
 
 **Date:** 2026-09-07
 **Product:** Pawstia PMS / PS01
 **Mode:** WSTERA BUILD-TO-SELL / PS01-ONLY SCOPE
-**Status:** PROPOSED CANONICAL PS01 CONTRACT — planning only; no DB mutation
+**Status:** PROPOSED CANONICAL PS01 CONTRACT â€” planning only; no DB mutation
 
 ## 1. Owner Direction
 
@@ -21,8 +21,8 @@ PS01 owns only Product-scoped namespaces and assets.
 
 Target database namespaces:
 
-- `ps01` — PS01 application/API surface
-- `ps01_internal` — PS01 non-public/internal runtime objects
+- `ps01` â€” PS01 application/API surface
+- `ps01_internal` â€” PS01 non-public/internal runtime objects
 
 Supabase-managed shared namespaces remain external dependencies:
 
@@ -98,9 +98,9 @@ Preferred rule:
 
 ```text
 SECURITY DEFINER function
-→ fixed safe search_path
-→ schema-qualified PS01 object references
-→ no unqualified cross-schema lookup
+â†’ fixed safe search_path
+â†’ schema-qualified PS01 object references
+â†’ no unqualified cross-schema lookup
 ```
 ## 6. Auth Boundary
 
@@ -110,9 +110,9 @@ PS01 authorization is determined by PS01 membership only:
 
 ```text
 auth.users.id
-   ↓
+   â†“
 ps01.staff_users.id
-   ↓
+   â†“
 PS01 shop / role / active membership
 ```
 
@@ -142,8 +142,8 @@ This is **not sufficient for strict Product isolation** in a shared project beca
 Therefore PS01 must not use a shared `service_role` credential as its normal database data-plane identity in the target shared runtime.
 Target privileged identities:
 
-- `ps01_runtime` — product-scoped backend role/credential for PS01 only
-- optional `ps01_worker` — narrower worker role if LINE/Google/internal workers need a distinct boundary
+- `ps01_runtime` â€” product-scoped backend role/credential for PS01 only
+- optional `ps01_worker` â€” narrower worker role if LINE/Google/internal workers need a distinct boundary
 
 Required properties:
 
@@ -307,36 +307,36 @@ Before WSTERA LAB apply, PS01 must pass at least:
 
 No other Product is required to change for this PS01 workstream.
 
-### Step 1 — freeze boundary
+### Step 1 â€” freeze boundary
 - accept `ps01` / `ps01_internal` ownership model;
 - lock PS01 runtime/migrator role requirements;
 - lock PS01 Storage prefix.
 
-### Step 2 — build namespaced migration baseline
+### Step 2 â€” build namespaced migration baseline
 - derive accepted final schema from the 13 historical migrations;
 - generate PS01 shared-runtime migration stream;
 - preserve historical migrations unchanged outside the active shared-runtime stream;
 - add PS01 migration ledger/checksum mechanism.
 
-### Step 3 — make source schema-aware
+### Step 3 â€” make source schema-aware
 - configure user/server Supabase clients for `ps01`;
 - schema-qualify intentional `ps01_internal` access;
 - update RPC/table calls and generated types;
 - rename Storage bucket constant to PS01-prefixed target.
 
-### Step 4 — remove global privileged data-plane assumption
+### Step 4 â€” remove global privileged data-plane assumption
 - inventory every current `getSupabaseAdminClient()` call;
 - move normal PS01 DB/worker work to `ps01_runtime` / `ps01_worker` authority;
 - isolate any remaining Auth Admin requirement behind the narrowest reviewed boundary.
 
-### Step 5 — local/isolated verification
+### Step 5 â€” local/isolated verification
 - migration equivalence tests;
 - typecheck/lint/build;
 - existing tenant isolation regression;
 - new Product-boundary negative tests;
 - migration write-scope tests.
 
-### Step 6 — only then request WSTERA LAB apply
+### Step 6 â€” only then request WSTERA LAB apply
 - no `db push` directly from the legacy stream;
 - apply PS01 migration stream with PS01 migrator authority;
 - smoke PS01 only;
@@ -344,18 +344,56 @@ No other Product is required to change for this PS01 workstream.
 
 ## 17. Current Decision
 
-**PS01 shared-runtime design: ACCEPTED FOR PS01 IMPLEMENTATION.**
-**Namespaced baseline generation: COMPLETE (static proof).**
+**PS01 shared-runtime design: ACCEPTED / IMPLEMENTED FOR WSTERA LAB.**
+**Namespaced shared-runtime baseline: COMPLETE (14 canonical migration sources).**
 **PS01 source client schema pinning: COMPLETE (`ps01`).**
 **Historical 13 migrations: PRESERVED / UNMODIFIED.**
-**Project-wide service-role removal from Closed Beta core: PROVEN by source inventory; optional/admin paths remain gated.**
-**Database apply/equivalence proof: BLOCKED until an isolated local PostgreSQL/Supabase sandbox is available.**
-**WSTERA LAB mutation: NOT AUTHORIZED until DB proof passes.**
+**Product-facing schema: `ps01`.**
+**Internal schema: `ps01_internal`.**
+**Bounded roles: `ps01_migrator` + `ps01_runtime` + server-login boundary `ps01_runtime_login`.**
+**Project-wide service-role removal from Closed Beta core: PROVEN by source inventory; optional/admin paths remain separately gated.**
+**WSTERA LAB mutation: OWNER AUTHORIZED on 2026-09-08 and APPLIED through the bounded shared-runtime path.**
+**LAB dry-run + rollback proof: PASS.**
+**LAB post-apply product-boundary proof: PASS.**
+**Booking V2 transactional acceptance: PASS 21/21 with rollback of test data.**
+**Shared Data API exposure for `ps01`: CONFIGURED; anonymous access remains intentionally denied.**
 
-Current implementation artifacts:
+Current verified WSTERA LAB state after PS01 apply:
+- existing `local_service` (BK01) object counts remained unchanged by PS01 apply proof;
+- existing `public` and `auth` object counts remained unchanged by PS01 apply proof;
+- `ps01` contains the PS01 product/business surface;
+- `ps01_internal` contains PS01-internal migration/runtime metadata;
+- `ps01_runtime` has `USAGE` on `ps01` but not on `local_service` or `ps01_internal`;
+- `ps01_runtime_login` is LOGIN + INHERIT, member only of `ps01_runtime`, and has no superuser/createdb/createrole/bypass-RLS power;
+- `ps01_runtime_login` can execute the allowlisted PS01 customer V2 gateway but cannot read PS01 tables directly, cannot access BK01/`ps01_internal`/`auth`, and cannot create PS01 objects;
+- `ps01_migrator` does not have database-wide `CREATE`;
+- project `service_role` is not granted normal PS01 schema access.
+
+Current implementation artifacts include:
 - `scripts/generate-ps01-shared-runtime-baseline.mjs`
 - `scripts/verify-ps01-shared-runtime-boundary.mjs`
+- `supabase/shared-runtime/ps01-platform-bootstrap.sql`
 - `supabase/shared-runtime/ps01-baseline.sql`
+- `supabase/shared-runtime/ps01-managed-assets.sql`
+- `supabase/shared-runtime/ps01-db-proof.sql`
 - `lib/ps01-schema.ts`
+- `lib/ps01-runtime.ts` (legacy PostgREST/JWT prototype retained for rollback/reference)
+- `lib/ps01-runtime-db.ts` (active bounded Customer LINE database adapter candidate)
+- `supabase/migrations/20260908103100_booking_v2_rate_plans.sql`
 
-Next gate: apply the generated baseline only in an isolated PS01 sandbox, then run migration equivalence + product-boundary negative tests before any WSTERA LAB apply.
+Remaining runtime gates before PS01 can be declared full end-to-end test-ready:
+
+1. **Authenticated Staff browser/runtime proof in WSTERA LAB**
+   - provision a LAB-only Auth user;
+   - bootstrap a PS01 test tenant and fixture through the normal authenticated path;
+   - run login/dashboard/Booking V2 smoke against WSTERA LAB.
+
+2. **Customer LINE bounded runtime credential**
+   - `ps01_runtime_login` database boundary and RPC-only behavior are proven in WSTERA LAB;
+   - provision a LAB-only password/credential for that login role outside source control;
+   - do not use the project secret/service role or project-wide JWT signing changes as a customer data-plane substitute;
+   - prove the full path `LINE -> Next server -> Supabase pooler -> ps01_runtime_login -> ps01_runtime -> PS01 RPC`.
+
+**Current status: LAB SCHEMA + DATABASE BEHAVIOR PROVEN; FULL APPLICATION E2E NOT YET CLOSED.**
+
+Next gate: close Staff authenticated LAB smoke first, then close the customer LINE bounded-runtime credential and HTTP-path proof. No production mutation is authorized by this contract.

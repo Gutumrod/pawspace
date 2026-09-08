@@ -22,8 +22,8 @@ BEGIN
   SELECT count(*) INTO table_count
   FROM information_schema.tables
   WHERE table_schema = 'ps01' AND table_type = 'BASE TABLE';
-  IF table_count <> 20 THEN
-    RAISE EXCEPTION 'PS01_PROOF: expected 20 ps01 tables, found %', table_count;
+  IF table_count <> 21 THEN
+    RAISE EXCEPTION 'PS01_PROOF: expected 21 ps01 tables (Booking V2 included), found %', table_count;
   END IF;
 END $$;
 DO $$
@@ -130,7 +130,7 @@ DO $$
 BEGIN
   IF NOT EXISTS (
     SELECT 1 FROM ps01_internal.schema_migrations
-    WHERE migration_count = 13
+    WHERE migration_count = 14
   ) THEN
     RAISE EXCEPTION 'PS01_PROOF: PS01 migration ledger missing canonical baseline';
   END IF;

@@ -30,6 +30,50 @@ export function requirePublicSupabaseEnv(): SupabasePublicEnv {
   return env;
 }
 
+export interface Ps01RuntimeEnv extends SupabasePublicEnv {
+  runtimeJwt: string;
+}
+
+export function requirePs01RuntimeEnv(): Ps01RuntimeEnv {
+  const publicEnv = requirePublicSupabaseEnv();
+  const runtimeJwt = process.env.PS01_RUNTIME_JWT?.trim();
+  if (!runtimeJwt) {
+    throw new Error(
+      "Missing required server-only environment variable: PS01_RUNTIME_JWT must contain a product-scoped role=ps01_runtime token."
+    );
+  }
+  return { ...publicEnv, runtimeJwt };
+}
+
+export interface Ps01RuntimeDatabaseEnv {
+  host: string;
+  port: number;
+  database: string;
+  user: string;
+  password: string;
+}
+
+export function getPs01RuntimeDatabaseEnv(): Ps01RuntimeDatabaseEnv | null {
+  const host = process.env.PS01_RUNTIME_DB_HOST?.trim();
+  const database = process.env.PS01_RUNTIME_DB_NAME?.trim();
+  const user = process.env.PS01_RUNTIME_DB_USER?.trim();
+  const password = process.env.PS01_RUNTIME_DB_PASSWORD;
+  const portRaw = process.env.PS01_RUNTIME_DB_PORT?.trim() || "5432";
+  const port = Number.parseInt(portRaw, 10);
+  if (!host || !database || !user || !password || !Number.isInteger(port) || port <= 0 || port > 65535) {
+    return null;
+  }
+  return { host, port, database, user, password };
+}
+
+export function requirePs01RuntimeDatabaseEnv(): Ps01RuntimeDatabaseEnv {
+  const env = getPs01RuntimeDatabaseEnv();
+  if (!env) {
+    throw new Error("Missing or invalid PS01_RUNTIME_DB_* server-only environment variables.");
+  }
+  return env;
+}
+
 export function getAdminSupabaseEnv(): SupabaseAdminEnv | null {
   const publicEnv = getPublicSupabaseEnv();
   const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;

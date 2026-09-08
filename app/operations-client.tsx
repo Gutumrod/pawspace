@@ -5,17 +5,18 @@ import { useRouter } from "next/navigation";
 import type { OperationsDTO, RoomType } from "@/lib/operations-service";
 import { logoutAction } from "@/app/actions/auth";
 import {
-  createBookingAction,
+  createBookingV2Action,
   addPetToBookingAction,
   removePetFromBookingAction,
   updateBookingScheduleAction,
   updateBookingStatusAction,
-  setRoomMaintenanceAction,
+  setRoomMaintenanceV2Action,
   markRoomCleanAction,
   confirmBookingRequestAction,
   declineBookingRequestAction,
 } from "@/app/actions/booking";
-import { createRoomAction, updateRoomAction, createOwnerAction, updateOwnerAction, createPetAction, updatePetAction } from "@/app/actions/operations";
+import { createRoomAction, updateRoomAction, createRatePlanAction, updateRatePlanAction, createOwnerAction, updateOwnerAction, createPetAction, updatePetAction } from "@/app/actions/operations";
+import { bangkokLocalInputToIso, defaultBangkokLocalInput, formatBangkokDateTime, isoToBangkokLocalInput } from "@/lib/booking-v2-time";
 import { inviteStaffAction, disableStaffAction, enableStaffAction, changeStaffRoleAction, removeStaffAction } from "@/app/actions/staff";
 import { generateLineClaimTokenAction, resetLineLinkAction } from "@/app/actions/line-claim";
 import { generateGoogleSheetClaimAction, bindGoogleSheetAction, disconnectGoogleSheetAction } from "@/app/actions/google-sheet";
@@ -34,6 +35,8 @@ export default function OperationsClient({ initial }: { initial: OperationsDTO }
   const [notice, setNotice] = useState<{ kind: "ok" | "error"; text: string } | null>(null);
   const [claimToken, setClaimToken] = useState<string | null>(null);
   const [sheetToken, setSheetToken] = useState<string | null>(null);
+  const [bookingOwnerId, setBookingOwnerId] = useState(initial.owners[0]?.id ?? "");
+  const [bookingRoomId, setBookingRoomId] = useState(initial.rooms[0]?.id ?? "");
   const canManage = initial.staff.role === "owner" || initial.staff.role === "manager";
   const isOwner = initial.staff.role === "owner";
 
@@ -41,6 +44,8 @@ export default function OperationsClient({ initial }: { initial: OperationsDTO }
   const petsById = useMemo(() => new Map(initial.pets.map((p) => [p.id, p])), [initial.pets]);
   const roomsById = useMemo(() => new Map(initial.rooms.map((r) => [r.id, r])), [initial.rooms]);
   const activeBookings = initial.bookings.filter((b) => b.status === "confirmed" || b.status === "checked_in");
+  const bookingRatePlans = initial.ratePlans.filter((plan) => plan.roomId === bookingRoomId && plan.isActive);
+  const bookingPets = initial.pets.filter((pet) => pet.ownerId === bookingOwnerId);
 
   function run(label: string, task: () => Promise<ActionLike>) {
     setNotice(null);
@@ -115,7 +120,7 @@ export default function OperationsClient({ initial }: { initial: OperationsDTO }
               {initial.rooms.map((room) => {
                 const booking = activeBookings.find((b) => b.roomId === room.id);
                 const petNames = booking?.petIds.map((id) => petsById.get(id)?.name).filter(Boolean).join(", ");
-                return <article className="room-card" key={room.id}><div className="room-top"><div><div className="room-number">{room.number}</div><div className="room-type">{roomTypeLabel[room.type]}</div></div><span className={`status-chip chip-${room.status}`}>{roomStatusLabel[room.status]}</span></div><div className={`room-pet ${petNames ? "" : "empty"}`}>{petNames || "ไม่มีสัตว์พัก"}</div>{booking && <div className="room-note">{booking.checkInDate} → {booking.checkOutDate}</div>}{room.status === "cleaning" && <button className="secondary-button pilot-small" disabled={pending} onClick={() => run("ทำเครื่องหมายห้องสะอาด", () => markRoomCleanAction(room.id))}>Mark clean</button>}</article>;
+                return <article className="room-card" key={room.id}><div className="room-top"><div><div className="room-number">{room.number}</div><div className="room-type">{roomTypeLabel[room.type]}</div></div><span className={`status-chip chip-${room.status}`}>{roomStatusLabel[room.status]}</span></div><div className={`room-pet ${petNames ? "" : "empty"}`}>{petNames || "ไม่มีสัตว์พัก"}</div>{booking && <div className="room-note">{booking.modelVersion === 2 ? `${formatBangkokDateTime(booking.startAt)} → ${formatBangkokDateTime(booking.endAt)}` : `${booking.checkInDate} → ${booking.checkOutDate}`}</div>}{room.status === "cleaning" && <button className="secondary-button pilot-small" disabled={pending} onClick={() => run("ทำเครื่องหมายห้องสะอาด", () => markRoomCleanAction(room.id))}>Mark clean</button>}</article>;
               })}
             </div>}
           </section>
@@ -153,7 +158,7 @@ export default function OperationsClient({ initial }: { initial: OperationsDTO }
                               {owner?.firstName || "ลูกค้า"} ({owner?.phone || "-"}) · ขอจองห้อง {room?.number || "-"}
                             </h3>
                             <div className="panel-subtitle">
-                              {req.checkInDate} → {req.checkOutDate} · สัตว์: {reqPets || "ไม่มีระบุ"} · ยอดประเมิน ฿{req.totalAmount.toLocaleString()}
+                              {req.modelVersion === 2 ? `${formatBangkokDateTime(req.startAt)} → ${formatBangkokDateTime(req.endAt)} · ${req.quotedQuantity} ${req.quotedUnit}` : `${req.checkInDate} → ${req.checkOutDate}`} · สัตว์: {reqPets || "ไม่มีระบุ"} · ราคา ฿{req.totalAmount.toLocaleString()}
                             </div>
                             {req.specialRequests && (
                               <div style={{ fontSize: "0.85rem", color: "#6b7280", marginTop: "0.25rem" }}>
@@ -190,28 +195,31 @@ export default function OperationsClient({ initial }: { initial: OperationsDTO }
             </div>
           )}
 
-          <form data-testid="booking-create-form" className="card panel pilot-form" onSubmit={(e) => { e.preventDefault(); const f = new FormData(e.currentTarget); run("สร้างการจอง", () => createBookingAction({ ownerId: String(f.get("ownerId")), roomId: String(f.get("roomId")), checkInDate: String(f.get("checkInDate")), checkOutDate: String(f.get("checkOutDate")), totalAmount: Number(f.get("totalAmount") || 0), specialRequests: String(f.get("specialRequests") || "") })); }}>
-            <h2 className="panel-title">สร้างการจอง</h2><div className="pilot-grid-4">
-              <label>ลูกค้า<select name="ownerId" required>{initial.owners.map((o) => <option key={o.id} value={o.id}>{o.firstName} {o.lastName || ""}</option>)}</select></label>
-              <label>ห้อง<select name="roomId" required>{initial.rooms.map((r) => <option key={r.id} value={r.id}>{r.number} · {roomTypeLabel[r.type]}</option>)}</select></label>
-              <label>Check-in<input name="checkInDate" type="date" defaultValue={initial.businessDate} required /></label>
-              <label>Check-out<input name="checkOutDate" type="date" required /></label>
-              <label>ยอดรวม<input name="totalAmount" type="number" min="0" step="0.01" defaultValue="0" /></label>
+          <form data-testid="booking-create-form" className="card panel pilot-form" onSubmit={(e) => { e.preventDefault(); const f = new FormData(e.currentTarget); const startAt = bangkokLocalInputToIso(String(f.get("startAt"))); if (!startAt) { setNotice({ kind: "error", text: "วัน/เวลาเริ่มต้นไม่ถูกต้อง" }); return; } run("สร้าง Booking V2", () => createBookingV2Action({ ownerId: bookingOwnerId, roomId: bookingRoomId, ratePlanId: String(f.get("ratePlanId")), petIds: f.getAll("petIds").map(String), startAt, specialRequests: String(f.get("specialRequests") || "") })); }}>
+            <h2 className="panel-title">สร้าง Booking V2</h2>
+            <div className="panel-subtitle">ราคาและเวลาสิ้นสุดคำนวณจาก Rate Plan โดยระบบ · Staff แก้ยอดรวมเองไม่ได้</div>
+            <div className="pilot-grid-4">
+              <label>ลูกค้า<select name="ownerId" required value={bookingOwnerId} onChange={(e) => setBookingOwnerId(e.target.value)}>{initial.owners.map((o) => <option key={o.id} value={o.id}>{o.firstName} {o.lastName || ""}</option>)}</select></label>
+              <label>สัตว์<select name="petIds" multiple required size={Math.min(4, Math.max(2, bookingPets.length))}>{bookingPets.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}</select></label>
+              <label>ห้อง<select name="roomId" required value={bookingRoomId} onChange={(e) => setBookingRoomId(e.target.value)}>{initial.rooms.map((r) => <option key={r.id} value={r.id}>{r.number} · {roomTypeLabel[r.type]}</option>)}</select></label>
+              <label>Rate Plan<select name="ratePlanId" required>{bookingRatePlans.map((plan) => <option key={plan.id} value={plan.id}>{plan.quantity} {plan.unit} · ฿{plan.price.toLocaleString()}</option>)}</select></label>
+              <label>เริ่มเข้าพัก (Bangkok)<input name="startAt" type="datetime-local" defaultValue={defaultBangkokLocalInput(1)} required /></label>
               <label className="pilot-span-3">คำขอพิเศษ<input name="specialRequests" /></label>
-            </div><button className="primary-button" disabled={pending || initial.owners.length === 0 || initial.rooms.length === 0}>สร้าง Booking</button>
+            </div>
+            <button className="primary-button" disabled={pending || initial.owners.length === 0 || bookingPets.length === 0 || bookingRatePlans.length === 0}>สร้าง Booking</button>
           </form>
           <div className="pilot-list">
             {initial.bookings.length === 0 && <div className="card panel pilot-empty">ยังไม่มีการจอง</div>}
             {initial.bookings.map((booking) => { const owner = ownersById.get(booking.ownerId); const room = roomsById.get(booking.roomId); const ownerPets = initial.pets.filter((p) => p.ownerId === booking.ownerId); return <article className="card panel" key={booking.id}>
-              <div className="panel-header"><div><h3 className="panel-title">{owner?.firstName || "ลูกค้า"} · ห้อง {room?.number || "-"}</h3><div className="panel-subtitle">{booking.checkInDate} → {booking.checkOutDate} · {booking.status}</div></div><span className={`status-chip chip-${booking.status === "checked_in" ? "occupied" : booking.status === "confirmed" ? "available" : "maintenance"}`}>{booking.status}</span></div>
+              <div className="panel-header"><div><h3 className="panel-title">{owner?.firstName || "ลูกค้า"} · ห้อง {room?.number || "-"}</h3><div className="panel-subtitle">{booking.modelVersion === 2 ? `${formatBangkokDateTime(booking.startAt)} → ${formatBangkokDateTime(booking.endAt)} · ${booking.quotedQuantity} ${booking.quotedUnit} · ฿${(booking.quotedPrice ?? booking.totalAmount).toLocaleString()}` : `${booking.checkInDate} → ${booking.checkOutDate} · Legacy V1 · ฿${booking.totalAmount.toLocaleString()}`} · {booking.status}</div></div><span className={`status-chip chip-${booking.status === "checked_in" ? "occupied" : booking.status === "confirmed" ? "available" : "maintenance"}`}>{booking.status}</span></div>
               <div className="pilot-pets">สัตว์: {booking.petIds.length ? booking.petIds.map((id) => petsById.get(id)?.name || id).join(", ") : "ยังไม่ได้เพิ่ม"}</div>
-              {booking.status === "confirmed" && <div className="pilot-action-row"><select id={`pet-${booking.id}`} defaultValue=""> <option value="">เลือกสัตว์</option>{ownerPets.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}</select><button className="secondary-button" disabled={pending} onClick={() => { const el = document.getElementById(`pet-${booking.id}`) as HTMLSelectElement | null; if (el?.value) run("เพิ่มสัตว์ใน booking", () => addPetToBookingAction(booking.id, el.value)); }}>เพิ่มสัตว์</button>{booking.petIds.map((petId) => <button key={petId} className="secondary-button" disabled={pending} onClick={() => run("ถอดสัตว์จาก booking", () => removePetFromBookingAction(booking.id, petId))}>ถอด {petsById.get(petId)?.name || "สัตว์"}</button>)}</div>}
-              {booking.status === "confirmed" && <form className="pilot-grid-4 pilot-inline-form" onSubmit={(e) => { e.preventDefault(); const f = new FormData(e.currentTarget); run("เลื่อนการจอง", () => updateBookingScheduleAction({ bookingId: booking.id, roomId: String(f.get("roomId")), checkInDate: String(f.get("checkInDate")), checkOutDate: String(f.get("checkOutDate")), totalAmount: Number(f.get("totalAmount") || booking.totalAmount), specialRequests: booking.specialRequests })); }}>
+              {booking.modelVersion === 1 && booking.status === "confirmed" && <div className="pilot-action-row"><select id={`pet-${booking.id}`} defaultValue=""> <option value="">เลือกสัตว์</option>{ownerPets.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}</select><button className="secondary-button" disabled={pending} onClick={() => { const el = document.getElementById(`pet-${booking.id}`) as HTMLSelectElement | null; if (el?.value) run("เพิ่มสัตว์ใน booking", () => addPetToBookingAction(booking.id, el.value)); }}>เพิ่มสัตว์</button>{booking.petIds.map((petId) => <button key={petId} className="secondary-button" disabled={pending} onClick={() => run("ถอดสัตว์จาก booking", () => removePetFromBookingAction(booking.id, petId))}>ถอด {petsById.get(petId)?.name || "สัตว์"}</button>)}</div>}
+              {booking.modelVersion === 1 && booking.status === "confirmed" && <form className="pilot-grid-4 pilot-inline-form" onSubmit={(e) => { e.preventDefault(); const f = new FormData(e.currentTarget); run("เลื่อน Legacy V1", () => updateBookingScheduleAction({ bookingId: booking.id, roomId: String(f.get("roomId")), checkInDate: String(f.get("checkInDate")), checkOutDate: String(f.get("checkOutDate")), totalAmount: Number(f.get("totalAmount") || booking.totalAmount), specialRequests: booking.specialRequests })); }}>
                 <label>ห้อง<select name="roomId" defaultValue={booking.roomId}>{initial.rooms.map((r) => <option key={r.id} value={r.id}>{r.number}</option>)}</select></label>
-                <label>Check-in<input name="checkInDate" type="date" defaultValue={booking.checkInDate} required /></label>
-                <label>Check-out<input name="checkOutDate" type="date" defaultValue={booking.checkOutDate} required /></label>
-                <label>ยอดรวม<input name="totalAmount" type="number" min="0" step="0.01" defaultValue={booking.totalAmount} /></label>
-                <button className="secondary-button" disabled={pending}>บันทึกกำหนดการ</button>
+                <label>Check-in<input name="checkInDate" type="date" defaultValue={booking.checkInDate ?? ""} required /></label>
+                <label>Check-out<input name="checkOutDate" type="date" defaultValue={booking.checkOutDate ?? ""} required /></label>
+                <label>ยอดรวม Legacy<input name="totalAmount" type="number" min="0" step="0.01" defaultValue={booking.totalAmount} /></label>
+                <button className="secondary-button" disabled={pending}>บันทึก Legacy V1</button>
               </form>}
               <div className="pilot-action-row">
                 {booking.status === "confirmed" && <button className="primary-button" disabled={pending || booking.petIds.length === 0} onClick={() => run("เช็คอิน", () => updateBookingStatusAction(booking.id, "checked_in"))}>Check-in</button>}
@@ -254,8 +262,36 @@ export default function OperationsClient({ initial }: { initial: OperationsDTO }
         </section>}
         {tab === "setup" && <section className="pilot-stack">
           {!canManage && <div className="card panel pilot-empty">สิทธิ์ Staff ใช้งาน core operations ได้ แต่ไม่มีสิทธิ์ตั้งค่าห้องหรือ integration</div>}
-          {canManage && <form data-testid="room-create-form" className="card panel pilot-form" onSubmit={(e) => { e.preventDefault(); const f = new FormData(e.currentTarget); run("เพิ่มห้อง", () => createRoomAction({ roomNumber: String(f.get("roomNumber")), roomType: String(f.get("roomType")) as RoomType, capacityPets: Number(f.get("capacityPets")), basePricePerNight: Number(f.get("basePricePerNight")) })); }}><h2 className="panel-title">Room setup</h2><div className="pilot-grid-4"><label>เลขห้อง<input name="roomNumber" required /></label><label>ประเภท<select name="roomType"><option value="standard">Standard</option><option value="deluxe">Deluxe</option><option value="vip">VIP</option><option value="cat_condo">Cat Condo</option></select></label><label>ความจุ<input name="capacityPets" type="number" min="1" defaultValue="1" required /></label><label>ราคาต่อคืน<input name="basePricePerNight" type="number" min="0" step="0.01" defaultValue="0" required /></label></div><button className="primary-button" disabled={pending}>เพิ่มห้อง</button></form>}
-          {canManage && initial.rooms.map((room) => <article className="card panel" key={room.id}><form onSubmit={(e) => { e.preventDefault(); const f = new FormData(e.currentTarget); run("แก้ไขห้อง", () => updateRoomAction({ roomId: room.id, roomNumber: String(f.get("roomNumber")), roomType: String(f.get("roomType")) as RoomType, capacityPets: Number(f.get("capacityPets")), basePricePerNight: Number(f.get("basePricePerNight")) })); }}><div className="pilot-grid-4"><label>เลขห้อง<input name="roomNumber" defaultValue={room.number} required /></label><label>ประเภท<select name="roomType" defaultValue={room.type}>{Object.entries(roomTypeLabel).map(([value,label]) => <option value={value} key={value}>{label}</option>)}</select></label><label>ความจุ<input name="capacityPets" type="number" min="1" defaultValue={room.capacity} required /></label><label>ราคา<input name="basePricePerNight" type="number" min="0" step="0.01" defaultValue={room.price} required /></label></div><div className="pilot-action-row"><button className="secondary-button" disabled={pending}>บันทึก config</button></div></form><form className="pilot-inline-form" onSubmit={(e) => { e.preventDefault(); const f = new FormData(e.currentTarget); run("ตั้ง maintenance", () => setRoomMaintenanceAction({ roomId: room.id, from: String(f.get("from")) || null, until: String(f.get("until")) || null })); }}><div className="pilot-action-row"><input name="from" type="date" defaultValue={room.maintenanceFrom || ""} /><input name="until" type="date" defaultValue={room.maintenanceUntil || ""} /><button className="secondary-button" disabled={pending}>บันทึก maintenance</button><button type="button" className="secondary-button" disabled={pending} onClick={() => run("ล้าง maintenance", () => setRoomMaintenanceAction({ roomId: room.id, from: null, until: null }))}>Clear</button></div></form></article>)}
+          {canManage && <form data-testid="room-create-form" className="card panel pilot-form" onSubmit={(e) => { e.preventDefault(); const f = new FormData(e.currentTarget); run("เพิ่มห้อง", () => createRoomAction({ roomNumber: String(f.get("roomNumber")), roomType: String(f.get("roomType")) as RoomType, capacityPets: Number(f.get("capacityPets")), basePricePerNight: Number(f.get("basePricePerNight")) })); }}>
+            <h2 className="panel-title">Room setup</h2>
+            <div className="panel-subtitle">สร้างห้องพร้อม Rate Plan เริ่มต้น 1 DAY อัตโนมัติ แล้วเพิ่มแพ็กเกจ HOUR / DAY / MONTH ด้านล่างได้</div>
+            <div className="pilot-grid-4"><label>เลขห้อง<input name="roomNumber" required /></label><label>ประเภท<select name="roomType"><option value="standard">Standard</option><option value="deluxe">Deluxe</option><option value="vip">VIP</option><option value="cat_condo">Cat Condo</option></select></label><label>ความจุ<input name="capacityPets" type="number" min="1" defaultValue="1" required /></label><label>ราคาเริ่มต้น 1 DAY<input name="basePricePerNight" type="number" min="0" step="0.01" defaultValue="0" required /></label></div>
+            <button className="primary-button" disabled={pending}>เพิ่มห้อง</button>
+          </form>}
+          {canManage && initial.rooms.map((room) => {
+            const roomPlans = initial.ratePlans.filter((plan) => plan.roomId === room.id);
+            return <article className="card panel" key={room.id}>
+              <form onSubmit={(e) => { e.preventDefault(); const f = new FormData(e.currentTarget); run("แก้ไขห้อง", () => updateRoomAction({ roomId: room.id, roomNumber: String(f.get("roomNumber")), roomType: String(f.get("roomType")) as RoomType, capacityPets: Number(f.get("capacityPets")), basePricePerNight: Number(f.get("basePricePerNight")) })); }}>
+                <div className="pilot-grid-4">
+                  <label>เลขห้อง<input name="roomNumber" defaultValue={room.number} required /></label>
+                  <label>ประเภท<select name="roomType" defaultValue={room.type}>{Object.entries(roomTypeLabel).map(([value,label]) => <option value={value} key={value}>{label}</option>)}</select></label>
+                  <label>ความจุ<input name="capacityPets" type="number" min="1" defaultValue={room.capacity} required /></label>
+                  <label>Legacy base price<input name="basePricePerNight" type="number" min="0" step="0.01" defaultValue={room.legacyPrice} required /></label>
+                </div>
+                <div className="pilot-action-row"><button className="secondary-button" disabled={pending}>บันทึก Room config</button></div>
+              </form>
+
+              <div style={{ marginTop: "1rem" }}><strong>Rate Plans</strong><div className="panel-subtitle">แพ็กเกจที่ลูกค้าและ Staff ใช้ร่วมกัน</div></div>
+              <form className="pilot-inline-form" onSubmit={(e) => { e.preventDefault(); const f = new FormData(e.currentTarget); run("เพิ่ม Rate Plan", () => createRatePlanAction({ roomId: room.id, unit: String(f.get("unit")) as "HOUR" | "DAY" | "MONTH", quantity: Number(f.get("quantity")), price: Number(f.get("price")) })); }}>
+                <div className="pilot-action-row"><select name="unit"><option value="HOUR">HOUR</option><option value="DAY">DAY</option><option value="MONTH">MONTH</option></select><input name="quantity" type="number" min="1" defaultValue="1" required /><input name="price" type="number" min="0" step="0.01" placeholder="ราคา" required /><button className="primary-button" disabled={pending}>+ Rate Plan</button></div>
+              </form>
+              <div className="pilot-list compact">{roomPlans.map((plan) => <form key={plan.id} className="pilot-inline-form" onSubmit={(e) => { e.preventDefault(); const f = new FormData(e.currentTarget); run("บันทึก Rate Plan", () => updateRatePlanAction(plan.id, { roomId: room.id, unit: String(f.get("unit")) as "HOUR" | "DAY" | "MONTH", quantity: Number(f.get("quantity")), price: Number(f.get("price")), isActive: f.get("isActive") === "on" })); }}><div className="pilot-action-row"><select name="unit" defaultValue={plan.unit}><option value="HOUR">HOUR</option><option value="DAY">DAY</option><option value="MONTH">MONTH</option></select><input name="quantity" type="number" min="1" defaultValue={plan.quantity} required /><input name="price" type="number" min="0" step="0.01" defaultValue={plan.price} required /><label><input name="isActive" type="checkbox" defaultChecked={plan.isActive} /> Active</label><button className="secondary-button" disabled={pending}>บันทึก</button></div></form>)}</div>
+
+              <form className="pilot-inline-form" onSubmit={(e) => { e.preventDefault(); const f = new FormData(e.currentTarget); const startAt = bangkokLocalInputToIso(String(f.get("startAt"))); const endAt = bangkokLocalInputToIso(String(f.get("endAt"))); if (!startAt || !endAt) { setNotice({ kind: "error", text: "ช่วงเวลา maintenance ไม่ถูกต้อง" }); return; } run("ตั้ง maintenance", () => setRoomMaintenanceV2Action({ roomId: room.id, startAt, endAt })); }}>
+                <div className="pilot-action-row"><input name="startAt" type="datetime-local" defaultValue={room.maintenanceStartAt ? isoToBangkokLocalInput(room.maintenanceStartAt) : ""} required /><input name="endAt" type="datetime-local" defaultValue={room.maintenanceEndAt ? isoToBangkokLocalInput(room.maintenanceEndAt) : ""} required /><button className="secondary-button" disabled={pending}>บันทึก maintenance</button><button type="button" className="secondary-button" disabled={pending} onClick={() => run("ล้าง maintenance", () => setRoomMaintenanceV2Action({ roomId: room.id, startAt: null, endAt: null }))}>Clear</button></div>
+              </form>
+            </article>;
+          })}
           {isOwner && <div className="card panel"><h2 className="panel-title">Staff management</h2><form data-testid="staff-invite-form" className="pilot-inline-form" onSubmit={(e) => { e.preventDefault(); const f = new FormData(e.currentTarget); run("เชิญ staff", () => inviteStaffAction({ email: String(f.get("email")), name: String(f.get("name")), role: String(f.get("role")) as "owner" | "manager" | "staff", password: String(f.get("password") || "") || undefined })); }}><div className="pilot-action-row"><input name="email" type="email" placeholder="email" required /><input name="name" placeholder="ชื่อ" required /><input name="password" type="password" placeholder="รหัสผ่านชั่วคราว (optional)" /><select name="role"><option value="staff">Staff</option><option value="manager">Manager</option><option value="owner">Owner</option></select><button className="primary-button" disabled={pending}>Invite</button></div></form><div className="pilot-list compact">{initial.staffMembers.map((member) => <div className="pilot-staff-row" key={member.id}><div><strong>{member.name}</strong><div className="panel-subtitle">{member.email} · {member.role} · {member.isActive ? "active" : "disabled"}</div></div><div className="pilot-action-row"><select defaultValue={member.role} onChange={(e) => run("เปลี่ยน role", () => changeStaffRoleAction(member.id, e.target.value as "owner" | "manager" | "staff"))}><option value="owner">Owner</option><option value="manager">Manager</option><option value="staff">Staff</option></select>{member.isActive ? <button className="secondary-button" disabled={pending} onClick={() => run("Disable staff", () => disableStaffAction(member.id))}>Disable</button> : <button className="secondary-button" disabled={pending} onClick={() => run("Enable staff", () => enableStaffAction(member.id))}>Enable</button>}<button className="secondary-button danger" disabled={pending} onClick={() => { if (window.confirm(`ยืนยันลบ ${member.name} ออกจากร้าน?`)) run("Remove staff", () => removeStaffAction(member.id)); }}>Remove</button></div></div>)}</div></div>}
           {canManage && <div className="card panel"><h2 className="panel-title">Google Sheets</h2><p className="panel-subtitle">Verified proof-of-control เท่านั้น · PawSpace_Config!B1</p><div className="pilot-action-row"><button className="secondary-button" disabled={pending} onClick={() => startTransition(async () => { const r = await generateGoogleSheetClaimAction(); if (r.success) { setSheetToken(r.token); setNotice({ kind: "ok", text: "สร้าง Google Sheet verification token แล้ว" }); } else setNotice({ kind: "error", text: r.error }); })}>สร้าง verification token</button>{initial.shop.googleSheetsConnected && <button className="secondary-button danger" disabled={pending} onClick={() => { if (window.confirm("ยืนยัน disconnect Google Sheet?")) run("Disconnect Google Sheet", disconnectGoogleSheetAction); }}>Disconnect</button>}</div>{sheetToken && <><code className="pilot-token">{sheetToken}</code><form className="pilot-inline-form" onSubmit={(e) => { e.preventDefault(); const f = new FormData(e.currentTarget); run("Bind Google Sheet", () => bindGoogleSheetAction(String(f.get("sheetId")))); }}><div className="pilot-action-row"><input name="sheetId" placeholder="Google Sheet ID หลังวาง token ที่ B1" required /><button className="primary-button" disabled={pending}>Verify & bind</button></div></form></>}</div>}
         </section>}

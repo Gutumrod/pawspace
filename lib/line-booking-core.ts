@@ -268,3 +268,228 @@ export async function submitBookingRequestCore(
 }
 
 
+
+// Booking V2 customer contract. Legacy Phase 11 exports above remain for historical regression tests.
+export type BookingRateUnit = "HOUR" | "DAY" | "MONTH";
+
+export interface LineBookingV2RequestInput {
+  shopId: string;
+  roomId: string;
+  ratePlanId: string;
+  petIds: string[];
+  startAt: string;
+  specialRequests?: string | null;
+  idToken: string;
+}
+
+export interface CustomerBookingV2Room {
+  id: string;
+  roomNumber: string;
+  roomType: string;
+  capacityPets: number;
+  status: string;
+  maintenanceStartAt: string | null;
+  maintenanceEndAt: string | null;
+}
+
+export interface CustomerBookingRatePlan {
+  id: string;
+  roomId: string;
+  pricingMode: "FIXED_PACKAGE";
+  unit: BookingRateUnit;
+  quantity: number;
+  price: number;
+  isActive: boolean;
+}
+
+export interface OccupiedRangeV2 {
+  roomId: string;
+  startAt: string;
+  endAt: string;
+}
+
+export interface CustomerBookingV2Context {
+  shop: CustomerBookingShop;
+  owner: CustomerBookingOwner;
+  pets: CustomerBookingPet[];
+  rooms: CustomerBookingV2Room[];
+  ratePlans: CustomerBookingRatePlan[];
+  occupiedRanges: OccupiedRangeV2[];
+}
+
+export interface BookingV2Quote {
+  pricingMode: "FIXED_PACKAGE";
+  unit: BookingRateUnit;
+  quantity: number;
+  price: number;
+  startAt: string;
+  endAt: string;
+  ratePlanId: string;
+  roomId: string;
+}
+
+export type BookingV2QuoteResult =
+  | { success: true; data: BookingV2Quote }
+  | { success: false; error: string; code?: "INVALID_INPUT" | "LINE_IDENTITY_INVALID" | "LINE_UNAVAILABLE" | "NOT_LINKED" | "SERVER_ERROR" };
+
+export type SubmitBookingRequestV2Result =
+  | { success: true; requestId: string }
+  | { success: false; error: string; code?: "INVALID_INPUT" | "LINE_IDENTITY_INVALID" | "LINE_UNAVAILABLE" | "NOT_LINKED" | "SERVER_ERROR" };
+
+function validateIsoTimestamp(value: string): boolean {
+  if (!value || !/([zZ]|[+-]\d{2}:\d{2})$/.test(value)) return false;
+  return Number.isFinite(Date.parse(value));
+}
+
+export function validateLineBookingV2Input(
+  raw: unknown,
+): { valid: boolean; error?: string; sanitized?: LineBookingV2RequestInput } {
+  if (!raw || typeof raw !== "object") return { valid: false, error: "Invalid payload: object expected." };
+  const input = raw as Partial<LineBookingV2RequestInput>;
+
+  if (!input.shopId || !UUID_RE.test(input.shopId.trim())) return { valid: false, error: "Invalid shop ID." };
+  if (!input.roomId || !UUID_RE.test(input.roomId.trim())) return { valid: false, error: "Invalid room ID." };
+  if (!input.ratePlanId || !UUID_RE.test(input.ratePlanId.trim())) return { valid: false, error: "Invalid Rate Plan ID." };
+  if (!Array.isArray(input.petIds) || input.petIds.length === 0) return { valid: false, error: "At least one pet must be selected." };
+
+  const petIds = input.petIds.map((id) => typeof id === "string" ? id.trim() : "");
+  if (petIds.some((id) => !UUID_RE.test(id))) return { valid: false, error: "Invalid pet ID in list." };
+  if (new Set(petIds).size !== petIds.length) return { valid: false, error: "Duplicate pets are not allowed." };
+
+  if (!input.startAt || !validateIsoTimestamp(input.startAt.trim())) {
+    return { valid: false, error: "startAt must be an ISO timestamp with timezone." };
+  }
+  if (!input.idToken || typeof input.idToken !== "string" || !input.idToken.trim()) {
+    return { valid: false, error: "LINE ID token is required." };
+  }
+
+  return {
+    valid: true,
+    sanitized: {
+      shopId: input.shopId.trim(),
+      roomId: input.roomId.trim(),
+      ratePlanId: input.ratePlanId.trim(),
+      petIds,
+      startAt: new Date(input.startAt.trim()).toISOString(),
+      specialRequests: typeof input.specialRequests === "string" ? input.specialRequests.trim() || null : null,
+      idToken: input.idToken.trim(),
+    },
+  };
+}
+
+async function verifyCustomerLineIdentity(
+  idToken: string,
+  channelId: string,
+  fetchImpl: typeof fetch,
+): Promise<{ success: true; userId: string } | { success: false; error: string; code: "LINE_IDENTITY_INVALID" | "LINE_UNAVAILABLE" }> {
+  const { verifyLineIdToken } = await import("./line-id-token");
+  const verified = await verifyLineIdToken(idToken, channelId, fetchImpl);
+  if (!verified.success) {
+    return {
+      success: false,
+      error: "LINE identity verification failed.",
+      code: verified.code === "LINE_UNAVAILABLE" ? "LINE_UNAVAILABLE" : "LINE_IDENTITY_INVALID",
+    };
+  }
+  return { success: true, userId: verified.identity.userId };
+}
+
+export interface Ps01RuntimeRpcClient {
+  rpc(
+    name: string,
+    args: Record<string, unknown>,
+  ): Promise<{ data: unknown; error: { message: string } | null }>;
+}
+
+export async function getCustomerBookingV2ContextCore(
+  runtimeClient: Ps01RuntimeRpcClient,
+  channelId: string,
+  shopId: string,
+  idToken: string,
+  fetchImpl: typeof fetch = fetch,
+): Promise<CustomerBookingCoreResult<CustomerBookingV2Context>> {
+  if (!UUID_RE.test(shopId?.trim() || "") || !idToken?.trim()) {
+    return { success: false, error: "Missing or invalid shop ID / LINE ID token.", code: "INVALID_INPUT" };
+  }
+
+  const identity = await verifyCustomerLineIdentity(idToken, channelId, fetchImpl);
+  if (!identity.success) return identity;
+
+  const { data, error } = await runtimeClient.rpc("get_customer_booking_context_v2_internal", {
+    p_verified_line_user_id: identity.userId,
+    p_shop_id: shopId.trim(),
+  });
+  if (error) {
+    return {
+      success: false,
+      error: error.message || "Failed to retrieve Booking V2 context.",
+      code: error.message.includes("not linked") ? "NOT_LINKED" : "SERVER_ERROR",
+    };
+  }
+  return { success: true, data: data as CustomerBookingV2Context };
+}
+
+export async function quoteCustomerBookingV2Core(
+  runtimeClient: Ps01RuntimeRpcClient,
+  channelId: string,
+  rawInput: unknown,
+  fetchImpl: typeof fetch = fetch,
+): Promise<BookingV2QuoteResult> {
+  const validation = validateLineBookingV2Input(rawInput);
+  if (!validation.valid || !validation.sanitized) {
+    return { success: false, error: validation.error || "Invalid booking payload.", code: "INVALID_INPUT" };
+  }
+  const input = validation.sanitized;
+  const identity = await verifyCustomerLineIdentity(input.idToken, channelId, fetchImpl);
+  if (!identity.success) return identity;
+
+  const { data, error } = await runtimeClient.rpc("quote_customer_booking_v2_internal", {
+    p_verified_line_user_id: identity.userId,
+    p_shop_id: input.shopId,
+    p_room_id: input.roomId,
+    p_rate_plan_id: input.ratePlanId,
+    p_pet_ids: input.petIds,
+    p_start_at: input.startAt,
+  });
+  if (error) {
+    return {
+      success: false,
+      error: error.message || "Failed to quote Booking V2.",
+      code: error.message.includes("not linked") ? "NOT_LINKED" : "SERVER_ERROR",
+    };
+  }
+  return { success: true, data: data as BookingV2Quote };
+}
+
+export async function submitBookingRequestV2Core(
+  runtimeClient: Ps01RuntimeRpcClient,
+  channelId: string,
+  rawInput: unknown,
+  fetchImpl: typeof fetch = fetch,
+): Promise<SubmitBookingRequestV2Result> {
+  const validation = validateLineBookingV2Input(rawInput);
+  if (!validation.valid || !validation.sanitized) {
+    return { success: false, error: validation.error || "Invalid booking payload.", code: "INVALID_INPUT" };
+  }
+  const input = validation.sanitized;
+  const identity = await verifyCustomerLineIdentity(input.idToken, channelId, fetchImpl);
+  if (!identity.success) return identity;
+
+  const { data, error } = await runtimeClient.rpc("submit_booking_request_v2_internal", {
+    p_verified_line_user_id: identity.userId,
+    p_shop_id: input.shopId,
+    p_room_id: input.roomId,
+    p_rate_plan_id: input.ratePlanId,
+    p_pet_ids: input.petIds,
+    p_start_at: input.startAt,
+    p_special_requests: input.specialRequests || null,
+  });
+  if (error) {
+    return {
+      success: false,
+      error: error.message || "Failed to submit Booking V2 request.",
+      code: error.message.includes("not linked") ? "NOT_LINKED" : "SERVER_ERROR",
+    };
+  }
+  return { success: true, requestId: data as string };
+}

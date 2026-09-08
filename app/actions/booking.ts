@@ -4,17 +4,24 @@ import { type SupabaseClient } from "@supabase/supabase-js";
 import {
   addPetToBooking,
   createBooking,
+  createBookingV2,
+  quoteBookingV2,
   markRoomClean,
   removePetFromBooking,
   setRoomMaintenance,
+  setRoomMaintenanceV2,
   updateBookingSchedule,
+  updateBookingV2Schedule,
   updateBookingStatus,
   type ActionResult,
   type BookingActor,
   type BookingStatusTarget,
   type CreateBookingInput,
+  type CreateBookingV2Input,
   type SetRoomMaintenanceInput,
+  type SetRoomMaintenanceV2Input,
   type UpdateBookingScheduleInput,
+  type UpdateBookingV2ScheduleInput,
 } from "@/lib/booking-service";
 import { logger } from "@/lib/logger";
 import { requireTenantContext, type StaffContext } from "@/lib/tenant-context";
@@ -132,5 +139,34 @@ export async function declineBookingRequestAction(
       return { success: false, error: error.message };
     }
     return { success: true };
+  });
+}
+
+export async function quoteBookingV2Action(input: CreateBookingV2Input) {
+  return withTenant("quoteBookingV2", (client, actor) => quoteBookingV2(client, actor, input));
+}
+
+export async function createBookingV2Action(
+  input: CreateBookingV2Input,
+): Promise<ActionResult<{ bookingId: string }>> {
+  return withTenant("createBookingV2", (client, actor) => createBookingV2(client, actor, input));
+}
+
+export async function updateBookingV2ScheduleAction(
+  input: UpdateBookingV2ScheduleInput,
+): Promise<ActionResult> {
+  return withTenant("updateBookingV2Schedule", (client, actor) =>
+    updateBookingV2Schedule(client, actor, input),
+  );
+}
+
+export async function setRoomMaintenanceV2Action(
+  input: SetRoomMaintenanceV2Input,
+): Promise<ActionResult> {
+  return withTenant("setRoomMaintenanceV2", async (client, actor, staff) => {
+    if (staff.role === "staff") {
+      return { success: false, error: "Forbidden: Only owner or manager can set room maintenance." };
+    }
+    return setRoomMaintenanceV2(client, actor, input);
   });
 }

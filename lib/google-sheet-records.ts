@@ -13,6 +13,8 @@ export const BOOKING_HEADERS = [
   "Record_ID", "Owner_ID", "Owner_Name", "Room_ID", "Room_Number", "Room_Type",
   "Check_In_Date", "Check_Out_Date", "Booking_Status", "Total_Amount", "Special_Requests",
   "Pet_IDs", "Pet_Names", "Created_At",
+  "Booking_Model_Version", "Start_At", "End_At", "Rate_Plan_ID",
+  "Quoted_Unit", "Quoted_Quantity", "Quoted_Price",
 ] as const;
 
 export type PetCustomerRecord = {
@@ -25,9 +27,12 @@ export type PetCustomerRecord = {
 
 export type BookingSheetRecord = {
   bookingId: string; ownerId: string; ownerName: string; roomId: string;
-  roomNumber: string; roomType: string; checkInDate: string; checkOutDate: string;
+  roomNumber: string; roomType: string; checkInDate: string | null; checkOutDate: string | null;
   bookingStatus: string; totalAmount: number; specialRequests: string | null;
   petIds: string[]; petNames: string[]; createdAt: string | null;
+  bookingModelVersion: 1 | 2; startAt: string | null; endAt: string | null;
+  ratePlanId: string | null; quotedUnit: string | null; quotedQuantity: number | null;
+  quotedPrice: number | null;
 };
 
 // Google Sheets (and Excel) treat a leading =, +, -, or @ as the start of a formula.
@@ -56,7 +61,9 @@ export function buildBookingRow(record: BookingSheetRecord): Array<string | numb
     cell(record.bookingId), cell(record.ownerId), cell(record.ownerName), cell(record.roomId), cell(record.roomNumber),
     cell(record.roomType), cell(record.checkInDate), cell(record.checkOutDate), cell(record.bookingStatus),
     record.totalAmount, cell(record.specialRequests), cell(record.petIds.join(",")),
-    cell(record.petNames.join(",")), cell(record.createdAt),
+    cell(record.petNames.join(",")), cell(record.createdAt), record.bookingModelVersion,
+    cell(record.startAt), cell(record.endAt), cell(record.ratePlanId), cell(record.quotedUnit),
+    cell(record.quotedQuantity), cell(record.quotedPrice),
   ];
 }
 

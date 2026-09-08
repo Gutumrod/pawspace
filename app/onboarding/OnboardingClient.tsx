@@ -589,7 +589,7 @@ export default function OnboardingClient({
                     />
                   </label>
                   <label>
-                    Base Price / Night (THB) *
+                    Initial 1 DAY Rate Plan (THB) *
                     <input
                       type="number"
                       min={0}
@@ -621,7 +621,7 @@ export default function OnboardingClient({
                       <span className={`status-chip chip-${room.status}`}>{room.status.toUpperCase()}</span>
                     </div>
                     <div style={{ marginTop: "12px", fontSize: "13px", fontWeight: 700, color: "var(--deep)" }}>
-                      ฿{room.price.toLocaleString()} / night
+                      ฿{room.legacyPrice.toLocaleString()} / initial DAY package
                     </div>
                   </div>
                 ))}

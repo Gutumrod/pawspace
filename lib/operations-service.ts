@@ -8,13 +8,21 @@ export type RoomStatus = "available" | "occupied" | "cleaning" | "maintenance";
 export type BookingStatus = "confirmed" | "checked_in" | "checked_out" | "cancelled";
 export type BookingRequestStatus = "requested" | "confirmed" | "declined" | "cancelled";
 export type RoomType = "standard" | "deluxe" | "vip" | "cat_condo";
+export type BookingRateUnit = "HOUR" | "DAY" | "MONTH";
 
 export interface BookingRequestDTO {
   id: string;
   ownerId: string;
   roomId: string;
-  checkInDate: string;
-  checkOutDate: string;
+  modelVersion: 1 | 2;
+  checkInDate: string | null;
+  checkOutDate: string | null;
+  startAt: string | null;
+  endAt: string | null;
+  ratePlanId: string | null;
+  quotedUnit: BookingRateUnit | null;
+  quotedQuantity: number | null;
+  quotedPrice: number | null;
   status: BookingRequestStatus;
   totalAmount: number;
   specialRequests: string | null;
@@ -34,10 +42,11 @@ export interface OperationsDTO {
     googleSheetsConnected: boolean;
     lineConfigured: boolean;
   };
-  rooms: Array<{ id: string; number: string; type: RoomType; capacity: number; price: number; status: RoomStatus; maintenanceFrom: string | null; maintenanceUntil: string | null }>;
+  rooms: Array<{ id: string; number: string; type: RoomType; capacity: number; legacyPrice: number; status: RoomStatus; maintenanceFrom: string | null; maintenanceUntil: string | null; maintenanceStartAt: string | null; maintenanceEndAt: string | null }>;
+  ratePlans: Array<{ id: string; roomId: string; unit: BookingRateUnit; quantity: number; price: number; isActive: boolean }>;
   owners: Array<{ id: string; firstName: string; lastName: string | null; phone: string; emergencyPhone: string | null; address: string | null; lineLinked: boolean }>;
   pets: Array<{ id: string; ownerId: string; name: string; species: "dog" | "cat"; breed: string | null; gender: string | null; birthDate: string | null; weightKg: number | null; specialCareNotes: string | null; allergies: string | null }>;
-  bookings: Array<{ id: string; ownerId: string; roomId: string; checkInDate: string; checkOutDate: string; status: BookingStatus; totalAmount: number; specialRequests: string | null; petIds: string[] }>;
+  bookings: Array<{ id: string; ownerId: string; roomId: string; modelVersion: 1 | 2; checkInDate: string | null; checkOutDate: string | null; startAt: string | null; endAt: string | null; ratePlanId: string | null; quotedUnit: BookingRateUnit | null; quotedQuantity: number | null; quotedPrice: number | null; status: BookingStatus; totalAmount: number; specialRequests: string | null; petIds: string[] }>;
   bookingRequests: BookingRequestDTO[];
   reports: Array<{ id: string; bookingId: string; petId: string; reportDate: string; foodStatus: string; excretionStatus: string; moodStatus: string; staffNotes: string | null; deliveryStatus: "pending" | "sending" | "sent" | "failed"; retryCount: number; createdAt: string }>;
   staffMembers: Array<{ id: string; email: string; name: string; role: "owner" | "manager" | "staff"; isActive: boolean }>;
@@ -58,18 +67,19 @@ export async function getOperationsSnapshot(): Promise<OperationsDTO> {
   assertNoError("Business date", businessDateResult.error);
   if (typeof businessDateResult.data !== "string") throw new Error("Invalid business date response.");
 
-  const [shopResult, roomsResult, ownersResult, petsResult, bookingsResult, bookingPetsResult, requestsResult, reportsResult] = await Promise.all([
+  const [shopResult, roomsResult, ratePlansResult, ownersResult, petsResult, bookingsResult, bookingPetsResult, requestsResult, reportsResult] = await Promise.all([
     client.from("shops").select("name,slug,phone,google_sheet_id,line_oa_id").eq("id", staff.shopId).single(),
-    client.from("rooms").select("id,room_number,room_type,capacity_pets,base_price_per_night,status,maintenance_from,maintenance_until").order("room_number"),
+    client.from("rooms").select("id,room_number,room_type,capacity_pets,base_price_per_night,status,maintenance_from,maintenance_until,maintenance_start_at,maintenance_end_at").order("room_number"),
+    client.from("room_rate_plans").select("id,room_id,unit,quantity,price,is_active").order("room_id").order("unit").order("quantity"),
     client.from("pet_owners").select("id,first_name,last_name,phone,emergency_phone,address,line_user_id").order("first_name"),
     client.from("pets").select("id,owner_id,name,species,breed,gender,birth_date,weight_kg,special_care_notes,allergies").order("name"),
-    client.from("bookings").select("id,owner_id,room_id,check_in_date,check_out_date,booking_status,total_amount,special_requests").order("check_in_date", { ascending: false }).limit(200),
+    client.from("bookings").select("id,owner_id,room_id,booking_model_version,check_in_date,check_out_date,start_at,end_at,rate_plan_id,quoted_unit,quoted_quantity,quoted_price,booking_status,total_amount,special_requests").order("created_at", { ascending: false }).limit(200),
     client.from("booking_pets").select("booking_id,pet_id"),
-    client.from("booking_requests").select("id,owner_id,room_id,check_in_date,check_out_date,status,total_amount,special_requests,pet_ids,requested_by_line_user_id,created_at").order("created_at", { ascending: false }).limit(100),
+    client.from("booking_requests").select("id,owner_id,room_id,booking_model_version,check_in_date,check_out_date,start_at,end_at,rate_plan_id,quoted_unit,quoted_quantity,quoted_price,status,total_amount,special_requests,pet_ids,requested_by_line_user_id,created_at").order("created_at", { ascending: false }).limit(100),
     client.from("daily_reports").select("id,booking_id,pet_id,report_date,food_status,excretion_status,mood_status,staff_notes,line_delivery_status,line_retry_count,created_at").order("created_at", { ascending: false }).limit(200),
   ]);
 
-  [shopResult, roomsResult, ownersResult, petsResult, bookingsResult, bookingPetsResult, requestsResult, reportsResult].forEach((result, index) => assertNoError(`Operations read ${index + 1}`, result.error));
+  [shopResult, roomsResult, ratePlansResult, ownersResult, petsResult, bookingsResult, bookingPetsResult, requestsResult, reportsResult].forEach((result, index) => assertNoError(`Operations read ${index + 1}`, result.error));
   if (!shopResult.data) throw new Error("Current shop is unavailable.");
   let staffRows: OperationsDTO["staffMembers"] = [];
   if (staff.role === "owner") {
@@ -105,9 +115,15 @@ export async function getOperationsSnapshot(): Promise<OperationsDTO> {
     },
     rooms: (roomsResult.data ?? []).map((row) => ({
       id: String(row.id), number: String(row.room_number), type: row.room_type as RoomType,
-      capacity: toNumber(row.capacity_pets), price: toNumber(row.base_price_per_night), status: row.status as RoomStatus,
+      capacity: toNumber(row.capacity_pets), legacyPrice: toNumber(row.base_price_per_night), status: row.status as RoomStatus,
       maintenanceFrom: row.maintenance_from ? String(row.maintenance_from) : null,
       maintenanceUntil: row.maintenance_until ? String(row.maintenance_until) : null,
+      maintenanceStartAt: row.maintenance_start_at ? String(row.maintenance_start_at) : null,
+      maintenanceEndAt: row.maintenance_end_at ? String(row.maintenance_end_at) : null,
+    })),
+    ratePlans: (ratePlansResult.data ?? []).map((row) => ({
+      id: String(row.id), roomId: String(row.room_id), unit: row.unit as BookingRateUnit,
+      quantity: toNumber(row.quantity), price: toNumber(row.price), isActive: Boolean(row.is_active),
     })),
     owners: (ownersResult.data ?? []).map((row) => ({
       id: String(row.id), firstName: String(row.first_name), lastName: row.last_name ? String(row.last_name) : null,
@@ -122,16 +138,32 @@ export async function getOperationsSnapshot(): Promise<OperationsDTO> {
       allergies: row.allergies ? String(row.allergies) : null,
     })),
     bookings: (bookingsResult.data ?? []).map((row) => ({
-      id: String(row.id), ownerId: String(row.owner_id), roomId: String(row.room_id), checkInDate: String(row.check_in_date),
-      checkOutDate: String(row.check_out_date), status: row.booking_status as BookingStatus, totalAmount: toNumber(row.total_amount),
+      id: String(row.id), ownerId: String(row.owner_id), roomId: String(row.room_id),
+      modelVersion: Number(row.booking_model_version) as 1 | 2,
+      checkInDate: row.check_in_date ? String(row.check_in_date) : null,
+      checkOutDate: row.check_out_date ? String(row.check_out_date) : null,
+      startAt: row.start_at ? String(row.start_at) : null,
+      endAt: row.end_at ? String(row.end_at) : null,
+      ratePlanId: row.rate_plan_id ? String(row.rate_plan_id) : null,
+      quotedUnit: row.quoted_unit ? row.quoted_unit as BookingRateUnit : null,
+      quotedQuantity: row.quoted_quantity === null ? null : toNumber(row.quoted_quantity),
+      quotedPrice: row.quoted_price === null ? null : toNumber(row.quoted_price),
+      status: row.booking_status as BookingStatus, totalAmount: toNumber(row.total_amount),
       specialRequests: row.special_requests ? String(row.special_requests) : null, petIds: petIdsByBooking.get(String(row.id)) ?? [],
     })),
     bookingRequests: (requestsResult.data ?? []).map((row) => ({
       id: String(row.id),
       ownerId: String(row.owner_id),
       roomId: String(row.room_id),
-      checkInDate: String(row.check_in_date),
-      checkOutDate: String(row.check_out_date),
+      modelVersion: Number(row.booking_model_version) as 1 | 2,
+      checkInDate: row.check_in_date ? String(row.check_in_date) : null,
+      checkOutDate: row.check_out_date ? String(row.check_out_date) : null,
+      startAt: row.start_at ? String(row.start_at) : null,
+      endAt: row.end_at ? String(row.end_at) : null,
+      ratePlanId: row.rate_plan_id ? String(row.rate_plan_id) : null,
+      quotedUnit: row.quoted_unit ? row.quoted_unit as BookingRateUnit : null,
+      quotedQuantity: row.quoted_quantity === null ? null : toNumber(row.quoted_quantity),
+      quotedPrice: row.quoted_price === null ? null : toNumber(row.quoted_price),
       status: row.status as BookingRequestStatus,
       totalAmount: toNumber(row.total_amount),
       specialRequests: row.special_requests ? String(row.special_requests) : null,
@@ -240,5 +272,55 @@ export async function updatePet(client: SupabaseClient, petId: string, input: Pe
     p_birth_date: input.birthDate || null, p_weight_kg: input.weightKg ?? null,
     p_avatar_url: null, p_special_care_notes: input.specialCareNotes?.trim() || null,
     p_allergies: input.allergies?.trim() || null,
+  });
+}
+
+export type RatePlanInput = {
+  roomId: string;
+  unit: BookingRateUnit;
+  quantity: number;
+  price: number;
+};
+
+function validateRatePlan(input: RatePlanInput): string | null {
+  if (!UUID_RE.test(input.roomId)) return "Invalid room id.";
+  if (!["HOUR", "DAY", "MONTH"].includes(input.unit)) return "Invalid Rate Plan unit.";
+  if (!Number.isInteger(input.quantity) || input.quantity < 1) return "Rate Plan quantity must be an integer >= 1.";
+  if (!Number.isFinite(input.price) || input.price < 0) return "Rate Plan price must be >= 0.";
+  return null;
+}
+
+export async function createRatePlan(
+  client: SupabaseClient,
+  input: RatePlanInput,
+): Promise<MutationResult<{ ratePlanId: string }>> {
+  const validation = validateRatePlan(input);
+  if (validation) return { success: false, error: validation };
+  const result = await rpcMutation<string>(client, "create_room_rate_plan", {
+    p_room_id: input.roomId,
+    p_unit: input.unit,
+    p_quantity: input.quantity,
+    p_price: input.price,
+  });
+  return result.success && result.data
+    ? { success: true, data: { ratePlanId: result.data } }
+    : { success: false, error: result.success ? "Missing Rate Plan id." : result.error };
+}
+
+export async function updateRatePlan(
+  client: SupabaseClient,
+  ratePlanId: string,
+  input: RatePlanInput & { isActive: boolean },
+): Promise<MutationResult> {
+  if (!UUID_RE.test(ratePlanId)) return { success: false, error: "Invalid Rate Plan id." };
+  const validation = validateRatePlan(input);
+  if (validation) return { success: false, error: validation };
+
+  return rpcMutation(client, "update_room_rate_plan", {
+    p_rate_plan_id: ratePlanId,
+    p_unit: input.unit,
+    p_quantity: input.quantity,
+    p_price: input.price,
+    p_is_active: input.isActive,
   });
 }

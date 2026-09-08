@@ -75,24 +75,28 @@ const petId = await rpcId("create_pet", {
 
 const todayResult = await userClient.rpc("pawspace_business_date");
 if (todayResult.error || !todayResult.data) throw todayResult.error ?? new Error("Business date failed");
-const checkIn = String(todayResult.data);
-const out = new Date(`${checkIn}T00:00:00Z`);
-out.setUTCDate(out.getUTCDate() + 1);
-const checkOut = out.toISOString().slice(0, 10);
-const bookingId = await rpcId("create_booking", {
+const businessDate = String(todayResult.data);
+
+const { data: plans, error: planError } = await userClient
+  .from("room_rate_plans")
+  .select("id,unit,quantity,price,is_active")
+  .eq("room_id", roomId)
+  .eq("unit", "DAY")
+  .eq("quantity", 1)
+  .eq("is_active", true);
+if (planError || !plans?.[0]) throw planError ?? new Error("Seeded DAY Rate Plan missing");
+const ratePlanId = String(plans[0].id);
+
+const start = new Date(`${businessDate}T03:00:00.000Z`);
+start.setUTCDate(start.getUTCDate() + 1);
+const bookingId = await rpcId("create_booking_v2", {
   p_owner_id: ownerId,
   p_room_id: roomId,
-  p_check_in_date: checkIn,
-  p_check_out_date: checkOut,
-  p_total_amount: 500,
-  p_special_requests: "Local proof booking",
+  p_rate_plan_id: ratePlanId,
+  p_pet_ids: [petId],
+  p_start_at: start.toISOString(),
+  p_special_requests: "Local Booking V2 proof fixture",
 });
-
-const attached = await userClient.rpc("add_pet_to_booking", {
-  p_booking_id: bookingId,
-  p_pet_id: petId,
-});
-if (attached.error) throw attached.error;
 
 await userClient.auth.signOut();
 

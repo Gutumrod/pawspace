@@ -6,10 +6,13 @@ import {
   createOwner,
   createPet,
   createRoom,
+  createRatePlan,
   updateOwner,
   updatePet,
   updateRoom,
+  updateRatePlan,
   type PetInput,
+  type RatePlanInput,
   type RoomType,
 } from "@/lib/operations-service";
 import { logger } from "@/lib/logger";
@@ -76,6 +79,27 @@ export async function updatePetAction(petId: string, input: PetInput) {
   return safeRun("updatePet", async () => {
     const { client } = await requireTenantContext();
     const result = await updatePet(client, petId, input);
+    if (result.success) refreshOperations();
+    return result;
+  });
+}
+
+export async function createRatePlanAction(input: RatePlanInput) {
+  return safeRun("createRatePlan", async () => {
+    const { client } = await requireManagerOrOwnerContext();
+    const result = await createRatePlan(client, input);
+    if (result.success) refreshOperations();
+    return result;
+  });
+}
+
+export async function updateRatePlanAction(
+  ratePlanId: string,
+  input: RatePlanInput & { isActive: boolean },
+) {
+  return safeRun("updateRatePlan", async () => {
+    const { client } = await requireManagerOrOwnerContext();
+    const result = await updateRatePlan(client, ratePlanId, input);
     if (result.success) refreshOperations();
     return result;
   });

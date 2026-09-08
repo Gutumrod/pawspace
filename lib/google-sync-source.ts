@@ -38,7 +38,7 @@ export async function readBookingRecord(
   bookingId: string,
 ): Promise<BookingSheetRecord | null> {
   const { data: booking, error: bookingError } = await admin.from("bookings")
-    .select("id,owner_id,room_id,check_in_date,check_out_date,booking_status,total_amount,special_requests,created_at")
+    .select("id,owner_id,room_id,booking_model_version,check_in_date,check_out_date,start_at,end_at,rate_plan_id,quoted_unit,quoted_quantity,quoted_price,booking_status,total_amount,special_requests,created_at")
     .eq("shop_id", shopId).eq("id", bookingId).maybeSingle();
   if (bookingError) fail("BOOKING_READ_FAILED", bookingError.message);
   if (!booking) return null;
@@ -80,6 +80,13 @@ export async function readBookingRecord(
     petIds,
     petNames,
     createdAt: booking.created_at,
+    bookingModelVersion: Number(booking.booking_model_version) as 1 | 2,
+    startAt: booking.start_at,
+    endAt: booking.end_at,
+    ratePlanId: booking.rate_plan_id,
+    quotedUnit: booking.quoted_unit,
+    quotedQuantity: booking.quoted_quantity === null ? null : Number(booking.quoted_quantity),
+    quotedPrice: booking.quoted_price === null ? null : Number(booking.quoted_price),
   };
 }
 

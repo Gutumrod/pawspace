@@ -1,24 +1,17 @@
 "use client";
 
 import Script from "next/script";
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
-  calculateEstimatedTotal,
-  isRoomAvailable,
-  validateDateRange,
-  type CustomerBookingContext,
-  type CustomerBookingPet,
-  type CustomerBookingRoom,
-} from "@/lib/line-booking-core";
-import { getCustomerBookingContextAction, submitBookingRequestAction } from "@/app/actions/line-booking";
+  getCustomerBookingContextAction,
+  quoteCustomerBookingAction,
+  submitBookingRequestAction,
+} from "@/app/actions/line-booking";
+import type { BookingV2Quote, CustomerBookingV2Context } from "@/lib/line-booking-core";
+import { bangkokLocalInputToIso, defaultBangkokLocalInput, formatBangkokDateTime } from "@/lib/booking-v2-time";
 
-type Props = {
-  shopId: string;
-  liffId: string;
-};
-
+type Props = { shopId: string; liffId: string };
 type ViewState = "init" | "loading" | "ready" | "submitting" | "success" | "error";
-
 type LiffApi = {
   init(input: { liffId: string }): Promise<void>;
   isLoggedIn(): boolean;
@@ -27,49 +20,38 @@ type LiffApi = {
 };
 
 declare global {
-  interface Window {
-    liff?: LiffApi;
-  }
+  interface Window { liff?: LiffApi }
 }
+
+const unitLabel = { HOUR: "ชั่วโมง", DAY: "วัน", MONTH: "เดือน" } as const;
 
 export function LineBookingClient({ shopId, liffId }: Props) {
   const started = useRef(false);
   const [state, setState] = useState<ViewState>("init");
-  const [errorMessage, setErrorMessage] = useState<string>("");
-  const [context, setContext] = useState<CustomerBookingContext | null>(null);
-  const [idToken, setIdToken] = useState<string>("");
-
-  // Form State
+  const [errorMessage, setErrorMessage] = useState("");
+  const [context, setContext] = useState<CustomerBookingV2Context | null>(null);
+  const [idToken, setIdToken] = useState("");
   const [selectedPetIds, setSelectedPetIds] = useState<string[]>([]);
-  const [selectedRoomId, setSelectedRoomId] = useState<string>("");
-  const [checkInDate, setCheckInDate] = useState<string>(() => {
-    const tomorrow = new Date();
-    tomorrow.setDate(tomorrow.getDate() + 1);
-    return tomorrow.toISOString().slice(0, 10);
-  });
-  const [checkOutDate, setCheckOutDate] = useState<string>(() => {
-    const dayAfter = new Date();
-    dayAfter.setDate(dayAfter.getDate() + 2);
-    return dayAfter.toISOString().slice(0, 10);
-  });
-  const [specialRequests, setSpecialRequests] = useState<string>("");
-  const [submittedRequestId, setSubmittedRequestId] = useState<string>("");
-  const [submitError, setSubmitError] = useState<string>("");
+  const [selectedRoomId, setSelectedRoomId] = useState("");
+  const [selectedRatePlanId, setSelectedRatePlanId] = useState("");
+  const [startLocal, setStartLocal] = useState(() => defaultBangkokLocalInput(1));
+  const [specialRequests, setSpecialRequests] = useState("");
+  const [quoteState, setQuoteState] = useState<{
+    key: string;
+    quote: BookingV2Quote | null;
+    error: string;
+    loading: boolean;
+  }>({ key: "", quote: null, error: "", loading: false });
+  const [submittedRequestId, setSubmittedRequestId] = useState("");
+  const [submitError, setSubmitError] = useState("");
 
   async function initializeLiff() {
     if (started.current) return;
     started.current = true;
     setState("loading");
-
-    if (!shopId) {
+    if (!shopId || !liffId || !window.liff) {
       setState("error");
-      setErrorMessage("ไม่พบรหัสร้านค้า กรุณาเปิดลิงก์จาก LINE Official Account ของร้าน");
-      return;
-    }
-
-    if (!liffId || !window.liff) {
-      setState("error");
-      setErrorMessage("ระบบ LINE LIFF ยังไม่ได้ตั้งค่า กรุณาติดต่อทางร้าน");
+      setErrorMessage("ลิงก์จองหรือ LINE LIFF ยังตั้งค่าไม่ครบ กรุณาติดต่อทางร้าน");
       return;
     }
 
@@ -79,104 +61,109 @@ export function LineBookingClient({ shopId, liffId }: Props) {
         window.liff.login({ redirectUri: window.location.href });
         return;
       }
-
       const token = window.liff.getIDToken();
-      if (!token) {
-        setState("error");
-        setErrorMessage("ไม่สามารถอ่าน LINE ID token ได้ กรุณาเปิดลิงก์ใหม่จากแอป LINE");
-        return;
-      }
+      if (!token) throw new Error("LINE_ID_TOKEN_MISSING");
       setIdToken(token);
 
       const result = await getCustomerBookingContextAction(shopId, token);
       if (!result.success) {
         setState("error");
-        if (result.code === "NOT_LINKED") {
-          setErrorMessage("ยังไม่ได้เชื่อมต่อบัญชี LINE กับร้านนี้ กรุณากดลิงก์เชื่อมต่อ LINE ที่ร้านส่งให้ก่อนครับ");
-        } else {
-          setErrorMessage(result.error || "เกิดข้อผิดพลาดในการโหลดข้อมูลร้านค้า");
-        }
+        setErrorMessage(result.code === "NOT_LINKED"
+          ? "ยังไม่ได้เชื่อมบัญชี LINE กับร้านนี้ กรุณาใช้ลิงก์เชื่อมต่อจากร้านก่อน"
+          : result.error || "โหลดข้อมูลการจองไม่สำเร็จ");
         return;
       }
-
       setContext(result.data);
-      if (result.data.pets.length > 0) {
-        setSelectedPetIds([result.data.pets[0].id]);
-      }
-      if (result.data.rooms.length > 0) {
-        setSelectedRoomId(result.data.rooms[0].id);
+      if (result.data.pets[0]) setSelectedPetIds([result.data.pets[0].id]);
+      if (result.data.rooms[0]) {
+        const firstRoomId = result.data.rooms[0].id;
+        setSelectedRoomId(firstRoomId);
+        const firstPlan = result.data.ratePlans.find((plan) => plan.roomId === firstRoomId && plan.isActive);
+        setSelectedRatePlanId(firstPlan?.id ?? "");
       }
       setState("ready");
     } catch {
       setState("error");
-      setErrorMessage("เกิดข้อผิดพลาดในการเชื่อมต่อ LINE LIFF กรุณาลองใหม่อีกครั้ง");
+      setErrorMessage("ไม่สามารถเชื่อมต่อ LINE LIFF ได้ กรุณาลองเปิดลิงก์ใหม่");
     }
   }
 
-  // Date validation & summary calculation
-  const dateValidation = useMemo(() => {
-    if (!checkInDate || !checkOutDate) return { valid: false, nights: 0 };
-    return validateDateRange(checkInDate, checkOutDate);
-  }, [checkInDate, checkOutDate]);
+  const roomRatePlans = useMemo(
+    () => context?.ratePlans.filter((plan) => plan.roomId === selectedRoomId && plan.isActive) ?? [],
+    [context, selectedRoomId],
+  );
 
-  const selectedRoom = useMemo(() => {
-    return context?.rooms.find((r) => r.id === selectedRoomId);
-  }, [context, selectedRoomId]);
+  const startAt = bangkokLocalInputToIso(startLocal);
+  const quoteKey = context && idToken && selectedRoomId && selectedRatePlanId && selectedPetIds.length > 0 && startAt
+    ? JSON.stringify([context.shop.id, selectedRoomId, selectedRatePlanId, [...selectedPetIds].sort(), startAt])
+    : "";
+  const quote = quoteState.key === quoteKey ? quoteState.quote : null;
+  const quoteLoading = Boolean(quoteKey) && (quoteState.key !== quoteKey || quoteState.loading);
+  const quoteError = !startAt
+    ? "วันและเวลาเริ่มต้นไม่ถูกต้อง"
+    : quoteState.key === quoteKey ? quoteState.error : "";
 
-  const totalEstimatedPrice = useMemo(() => {
-    if (!selectedRoom || !dateValidation.valid) return 0;
-    return calculateEstimatedTotal(selectedRoom.basePricePerNight, dateValidation.nights);
-  }, [selectedRoom, dateValidation]);
-
-  const isRoomCurrentlyAvailable = useMemo(() => {
-    if (!selectedRoomId || !context || !dateValidation.valid) return true;
-    const room = context.rooms.find((r) => r.id === selectedRoomId);
-    return isRoomAvailable(
-      selectedRoomId,
-      checkInDate,
-      checkOutDate,
-      context.occupiedRanges,
-      room?.maintenanceFrom,
-      room?.maintenanceUntil,
-    );
-  }, [selectedRoomId, context, dateValidation, checkInDate, checkOutDate]);
+  useEffect(() => {
+    if (!quoteKey || !context || !idToken || !startAt) return;
+    let cancelled = false;
+    void (async () => {
+      await Promise.resolve();
+      if (cancelled) return;
+      setQuoteState({ key: quoteKey, quote: null, error: "", loading: true });
+      try {
+        const result = await quoteCustomerBookingAction({
+          shopId: context.shop.id,
+          roomId: selectedRoomId,
+          ratePlanId: selectedRatePlanId,
+          petIds: selectedPetIds,
+          startAt,
+          idToken,
+        });
+        if (cancelled) return;
+        setQuoteState(result.success
+          ? { key: quoteKey, quote: result.data, error: "", loading: false }
+          : { key: quoteKey, quote: null, error: result.error, loading: false });
+      } catch {
+        if (!cancelled) {
+          setQuoteState({ key: quoteKey, quote: null, error: "ตรวจราคา/คิวไม่สำเร็จ", loading: false });
+        }
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [quoteKey, context, idToken, startAt, selectedRoomId, selectedRatePlanId, selectedPetIds]);
 
   function togglePet(petId: string) {
-    setSelectedPetIds((prev) =>
-      prev.includes(petId) ? (prev.length > 1 ? prev.filter((id) => id !== petId) : prev) : [...prev, petId],
-    );
+    setSelectedPetIds((current) => current.includes(petId)
+      ? (current.length > 1 ? current.filter((id) => id !== petId) : current)
+      : [...current, petId]);
   }
 
-  async function handleSubmit(e: React.FormEvent) {
-    e.preventDefault();
-    if (!idToken || !context || !selectedRoomId || selectedPetIds.length === 0 || !dateValidation.valid) {
-      return;
-    }
-
+  async function handleSubmit(event: React.FormEvent) {
+    event.preventDefault();
+    const startAt = bangkokLocalInputToIso(startLocal);
+    if (!context || !idToken || !startAt || !selectedRoomId || !selectedRatePlanId || !quote) return;
     setSubmitError("");
     setState("submitting");
     try {
-      const response = await submitBookingRequestAction({
+      const result = await submitBookingRequestAction({
         shopId: context.shop.id,
         roomId: selectedRoomId,
+        ratePlanId: selectedRatePlanId,
         petIds: selectedPetIds,
-        checkInDate,
-        checkOutDate,
+        startAt,
         specialRequests: specialRequests.trim() || null,
         idToken,
       });
-
-      if (!response.success) {
+      if (!result.success) {
         setState("ready");
-        setSubmitError(response.error || "ไม่สามารถส่งคำขอจองได้ กรุณาลองใหม่อีกครั้ง");
+        setSubmitError(result.error);
         return;
       }
-
-      setSubmittedRequestId(response.requestId || "");
+      setSubmittedRequestId(result.requestId);
       setState("success");
     } catch {
       setState("ready");
-      setSubmitError("เกิดข้อผิดพลาดในการส่งคำขอ กรุณาลองใหม่อีกครั้ง");
+      setSubmitError("ส่งคำขอไม่สำเร็จจากการเชื่อมต่อ");
     }
   }
 
@@ -186,366 +173,119 @@ export function LineBookingClient({ shopId, liffId }: Props) {
         src="https://static.line-scdn.net/liff/edge/2/sdk.js"
         strategy="afterInteractive"
         onReady={() => void initializeLiff()}
-        onError={() => {
-          setState("error");
-          setErrorMessage("โหลด LINE LIFF SDK ไม่สำเร็จ กรุณาลองใหม่อีกครั้ง");
-        }}
+        onError={() => { setState("error"); setErrorMessage("โหลด LINE LIFF SDK ไม่สำเร็จ"); }}
       />
 
-      {state === "loading" && (
-        <div
-          className="card"
-          style={{
-            padding: "36px 20px",
-            textAlign: "center",
-            background: "linear-gradient(135deg, #ffffff 0%, var(--primary-blue-soft) 100%)",
-          }}
-        >
-          <div
-            className="inline-block h-8 w-8 animate-spin rounded-full border-3 border-[var(--deep)] border-t-transparent mb-3"
-            role="status"
-            aria-label="กำลังโหลด"
-          />
-          <p style={{ fontWeight: 700, color: "var(--ink)", margin: 0, fontSize: "14px" }}>
-            กำลังเตรียมข้อมูลการจองผ่าน LINE…
-          </p>
-        </div>
-      )}
-
+      {state === "loading" && <div className="card" style={{ padding: 28, textAlign: "center" }}>กำลังโหลดข้อมูลการจอง…</div>}
       {state === "error" && (
-        <div className="pilot-notice error" style={{ padding: "20px", textAlign: "center" }}>
-          <div style={{ fontSize: "26px", marginBottom: "8px" }} aria-hidden="true">
-            ⚠️
-          </div>
-          <h2 style={{ fontSize: "15px", fontWeight: 700, margin: "0 0 6px" }}>ไม่สามารถเปิดหน้าจองได้</h2>
-          <p style={{ fontSize: "13px", margin: 0, opacity: 0.9 }}>{errorMessage}</p>
+        <div className="pilot-notice error" style={{ padding: 20, textAlign: "center" }}>
+          <strong>ไม่สามารถเปิดหน้าจองได้</strong><p>{errorMessage}</p>
         </div>
       )}
 
-      {state === "success" && context && (
+      {state === "success" && context && quote && (
         <div className="liff-success-card">
-          <div className="liff-success-icon" aria-hidden="true">
-            ✨
-          </div>
-          <h2
-            style={{
-              fontSize: "20px",
-              fontWeight: 800,
-              color: "var(--ink)",
-              margin: "0 0 6px",
-              letterSpacing: "-0.03em",
-            }}
-          >
-            ส่งคำขอจองสำเร็จแล้ว!
-          </h2>
-          <p style={{ fontSize: "13px", color: "var(--muted)", margin: "0 0 16px", lineHeight: 1.5 }}>
-            คำขอจองห้องพักสำหรับร้าน <strong style={{ color: "var(--ink)" }}>{context.shop.name}</strong>{" "}
-            ถูกส่งเข้าระบบเรียบร้อยแล้ว
-          </p>
-
+          <div className="liff-success-icon" aria-hidden="true">✓</div>
+          <h2 style={{ fontSize: 20, fontWeight: 800 }}>ส่งคำขอจองสำเร็จ</h2>
+          <p className="panel-subtitle">ร้าน {context.shop.name} จะตรวจสอบและยืนยันคำขออีกครั้ง</p>
           <div className="liff-success-detail">
-            <div className="liff-success-row">
-              <span style={{ color: "var(--muted)" }}>รหัสคำขอ:</span>
-              <span style={{ fontFamily: "monospace", fontSize: "12px", color: "var(--ink)", fontWeight: 700 }}>
-                {submittedRequestId.slice(0, 8)}
-              </span>
-            </div>
-            <div className="liff-success-row">
-              <span style={{ color: "var(--muted)" }}>ห้องพัก:</span>
-              <span style={{ fontWeight: 600, color: "var(--ink)" }}>
-                {selectedRoom?.roomNumber} ({selectedRoom?.roomType})
-              </span>
-            </div>
-            <div className="liff-success-row">
-              <span style={{ color: "var(--muted)" }}>วันที่เข้าพัก:</span>
-              <span style={{ fontWeight: 600, color: "var(--ink)" }}>
-                {checkInDate} ถึง {checkOutDate} ({dateValidation.nights} คืน)
-              </span>
-            </div>
-            <div className="liff-success-row">
-              <span style={{ color: "var(--muted)" }}>สัตว์เลี้ยง:</span>
-              <span style={{ fontWeight: 600, color: "var(--ink)" }}>
-                {context.pets.filter((p) => selectedPetIds.includes(p.id)).map((p) => p.name).join(", ")}
-              </span>
-            </div>
-            <div className="liff-success-row" style={{ paddingTop: "8px", borderTop: "1px solid var(--line)" }}>
-              <span style={{ fontWeight: 600, color: "var(--ink)" }}>ยอดประเมิน:</span>
-              <span style={{ fontSize: "18px", fontWeight: 800, color: "var(--deep)" }}>
-                ฿{totalEstimatedPrice.toLocaleString()}
-              </span>
-            </div>
-          </div>
-
-          <div className="pilot-notice ok" style={{ textAlign: "left", margin: 0 }}>
-            ℹ️ เจ้าหน้าที่ของร้านจะตรวจสอบคิวห้องพักและติดต่อยืนยันรายละเอียดผ่านทาง LINE อีกครั้งครับ
+            <div className="liff-success-row"><span>รหัสคำขอ</span><strong>{submittedRequestId.slice(0, 8)}</strong></div>
+            <div className="liff-success-row"><span>เริ่ม</span><strong>{formatBangkokDateTime(quote.startAt)}</strong></div>
+            <div className="liff-success-row"><span>สิ้นสุด</span><strong>{formatBangkokDateTime(quote.endAt)}</strong></div>
+            <div className="liff-success-row"><span>ราคาที่ขอจอง</span><strong>฿{quote.price.toLocaleString()}</strong></div>
           </div>
         </div>
       )}
 
       {(state === "ready" || state === "submitting") && context && (
-        <form onSubmit={handleSubmit} style={{ display: "grid", gap: "20px" }}>
-          {/* Shop & Customer Banner */}
+        <form onSubmit={handleSubmit} style={{ display: "grid", gap: 18 }}>
           <div className="liff-banner">
             <div className="liff-banner-eyebrow">จองห้องพักกับ</div>
             <div className="liff-banner-title">{context.shop.name}</div>
-            <div className="liff-banner-user">
-              ผู้จอง: <strong style={{ color: "var(--ink)" }}>{context.owner.firstName}</strong> ({context.owner.phone})
-            </div>
+            <div className="liff-banner-user">ผู้จอง: <strong>{context.owner.firstName}</strong> ({context.owner.phone})</div>
           </div>
 
-          {/* Step 1: Select Pets */}
-          <div>
-            <label className="liff-section-title">
-              1. เลือกสัตว์เลี้ยงที่เข้าพัก <span className="liff-section-required">*</span>
-            </label>
-            {context.pets.length === 0 ? (
-              <div
-                className="pilot-notice error"
-                style={{ display: "flex", alignItems: "center", gap: "8px", margin: 0 }}
-              >
-                <span aria-hidden="true">⚠️</span>
-                <span>ยังไม่มีข้อมูลสัตว์เลี้ยงในระบบ กรุณาติดต่อทางร้านเพื่อเพิ่มข้อมูล</span>
-              </div>
-            ) : (
-              <div className="liff-pet-grid">
-                {context.pets.map((pet: CustomerBookingPet) => {
-                  const selected = selectedPetIds.includes(pet.id);
-                  return (
-                    <button
-                      type="button"
-                      key={pet.id}
-                      onClick={() => togglePet(pet.id)}
-                      className={`liff-pet-card ${selected ? "selected" : ""}`}
-                      aria-pressed={selected}
-                    >
-                      <span className="liff-pet-icon">{pet.species === "cat" ? "🐱" : "🐶"}</span>
-                      <div style={{ minWidth: 0, flex: 1 }}>
-                        <div
-                          className="liff-pet-name"
-                          style={{ whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}
-                        >
-                          {pet.name}
-                        </div>
-                        <div
-                          className="liff-pet-breed"
-                          style={{ whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}
-                        >
-                          {pet.breed || (pet.species === "cat" ? "แมว" : "สุนัข")}
-                        </div>
-                      </div>
-                      {selected && (
-                        <span style={{ color: "var(--deep)", fontSize: "14px", fontWeight: 800 }}>✓</span>
-                      )}
-                    </button>
-                  );
-                })}
-              </div>
-            )}
-          </div>
-
-          {/* Step 2: Select Room */}
-          <div>
-            <label className="liff-section-title">
-              2. เลือกประเภทห้องพัก <span className="liff-section-required">*</span>
-            </label>
-            <div className="liff-room-list">
-              {context.rooms.map((room: CustomerBookingRoom) => {
-                const selected = selectedRoomId === room.id;
-                const fitsPets = room.capacityPets >= selectedPetIds.length;
-                return (
-                  <button
-                    type="button"
-                    key={room.id}
-                    disabled={!fitsPets}
-                    onClick={() => setSelectedRoomId(room.id)}
-                    className={`liff-room-card ${selected ? "selected" : ""}`}
-                    aria-pressed={selected}
-                  >
-                    <div style={{ minWidth: 0 }}>
-                      <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-                        <span style={{ fontSize: "15px", fontWeight: 800, color: "var(--ink)" }}>
-                          {room.roomNumber}
-                        </span>
-                        <span className="status-chip chip-available">{room.roomType}</span>
-                      </div>
-                      <div style={{ fontSize: "11px", color: "var(--muted)", marginTop: "4px" }}>
-                        รองรับสูงสุด {room.capacityPets} ตัว{" "}
-                        {!fitsPets && (
-                          <span style={{ color: "var(--coral)", fontWeight: 600 }}>
-                            (ความจุไม่พอสำหรับ {selectedPetIds.length} ตัว)
-                          </span>
-                        )}
-                      </div>
-                    </div>
-                    <div
-                      style={{
-                        textAlign: "right",
-                        flexShrink: 0,
-                        display: "flex",
-                        alignItems: "center",
-                        gap: "10px",
-                      }}
-                    >
-                      <div>
-                        <div style={{ fontSize: "16px", fontWeight: 800, color: "var(--deep)" }}>
-                          ฿{room.basePricePerNight.toLocaleString()}
-                        </div>
-                        <div style={{ fontSize: "11px", color: "var(--muted)" }}>/ คืน</div>
-                      </div>
-                      {selected && (
-                        <span
-                          style={{ color: "var(--deep)", fontSize: "16px", fontWeight: 800 }}
-                          aria-hidden="true"
-                        >
-                          ✓
-                        </span>
-                      )}
-                    </div>
-                  </button>
-                );
+          <section>
+            <label className="liff-section-title">1. เลือกสัตว์เลี้ยง *</label>
+            <div className="liff-pet-grid">
+              {context.pets.map((pet) => {
+                const selected = selectedPetIds.includes(pet.id);
+                return <button type="button" key={pet.id} aria-pressed={selected}
+                  className={`liff-pet-card ${selected ? "selected" : ""}`}
+                  onClick={() => togglePet(pet.id)}>
+                  <span className="liff-pet-icon">{pet.species === "cat" ? "🐱" : "🐶"}</span>
+                  <div><div className="liff-pet-name">{pet.name}</div><div className="liff-pet-breed">{pet.breed || pet.species}</div></div>
+                  {selected && <strong>✓</strong>}
+                </button>;
               })}
             </div>
-          </div>
+          </section>
 
-          {/* Step 3: Dates */}
-          <div>
-            <label className="liff-section-title">
-              3. วันที่เข้าพัก <span className="liff-section-required">*</span>
-            </label>
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(2, minmax(0, 1fr))", gap: "10px" }}>
-              <div>
-                <span
-                  style={{
-                    display: "block",
-                    fontSize: "11px",
-                    color: "var(--muted)",
-                    marginBottom: "4px",
-                    fontWeight: 500,
-                  }}
-                >
-                  วันเช็คอิน
-                </span>
-                <input
-                  type="date"
-                  required
-                  value={checkInDate}
-                  onChange={(e) => setCheckInDate(e.target.value)}
-                  className="liff-input"
-                />
-              </div>
-              <div>
-                <span
-                  style={{
-                    display: "block",
-                    fontSize: "11px",
-                    color: "var(--muted)",
-                    marginBottom: "4px",
-                    fontWeight: 500,
-                  }}
-                >
-                  วันเช็คเอาท์
-                </span>
-                <input
-                  type="date"
-                  required
-                  value={checkOutDate}
-                  onChange={(e) => setCheckOutDate(e.target.value)}
-                  className="liff-input"
-                />
-              </div>
+          <section>
+            <label className="liff-section-title">2. เลือกห้อง *</label>
+            <div className="liff-room-list">
+
+              {context.rooms.map((room) => {
+                const selected = room.id === selectedRoomId;
+                const fitsPets = room.capacityPets >= selectedPetIds.length;
+                const hasPlan = context.ratePlans.some((plan) => plan.roomId === room.id && plan.isActive);
+                return <button type="button" key={room.id} disabled={!fitsPets || !hasPlan}
+                  className={`liff-room-card ${selected ? "selected" : ""}`}
+                  onClick={() => {
+                    setSelectedRoomId(room.id);
+                    const firstPlan = context.ratePlans.find((plan) => plan.roomId === room.id && plan.isActive);
+                    setSelectedRatePlanId(firstPlan?.id ?? "");
+                  }}>
+                  <div><strong>{room.roomNumber}</strong><div className="panel-subtitle">{room.roomType} · สูงสุด {room.capacityPets} ตัว</div></div>
+                  <span>{!fitsPets ? "ความจุไม่พอ" : !hasPlan ? "ยังไม่มีแพ็กเกจ" : selected ? "✓" : "เลือก"}</span>
+                </button>;
+              })}
             </div>
+          </section>
 
-            {!dateValidation.valid && checkInDate && checkOutDate && (
-              <div
-                className="pilot-notice error"
-                style={{
-                  marginTop: "8px",
-                  padding: "8px 12px",
-                  display: "flex",
-                  alignItems: "center",
-                  gap: "8px",
-                }}
-              >
-                <span aria-hidden="true">⚠️</span>
-                <span>{dateValidation.error}</span>
-              </div>
-            )}
+          <section>
+            <label className="liff-section-title">3. เลือกแพ็กเกจ *</label>
+            <div className="liff-room-list">
+              {roomRatePlans.map((plan) => (
+                <button type="button" key={plan.id}
+                  className={`liff-room-card ${selectedRatePlanId === plan.id ? "selected" : ""}`}
+                  onClick={() => setSelectedRatePlanId(plan.id)}>
+                  <strong>{plan.quantity} {unitLabel[plan.unit]}</strong>
+                  <span style={{ fontWeight: 800 }}>฿{plan.price.toLocaleString()}</span>
+                </button>
+              ))}
+            </div>
+          </section>
 
-            {!isRoomCurrentlyAvailable && dateValidation.valid && (
-              <div
-                className="pilot-notice error"
-                style={{
-                  marginTop: "8px",
-                  padding: "8px 12px",
-                  fontWeight: 600,
-                  display: "flex",
-                  alignItems: "center",
-                  gap: "8px",
-                }}
-              >
-                <span aria-hidden="true">⚠️</span>
-                <span>ห้องพักนี้มีผู้จองแล้วในช่วงเวลาดังกล่าว กรุณาเลือกห้องอื่นหรือเปลี่ยนวัน</span>
-              </div>
-            )}
-          </div>
+          <section>
+            <label className="liff-section-title">4. วันและเวลาเริ่มเข้าพัก *</label>
+            <input className="liff-input" type="datetime-local" required value={startLocal}
+              onChange={(event) => setStartLocal(event.target.value)} />
+            <div className="panel-subtitle" style={{ marginTop: 6 }}>เวลาร้าน: Asia/Bangkok</div>
+          </section>
 
-          {/* Step 4: Special Requests */}
-          <div>
-            <label className="liff-section-title">4. ข้อความหรือคำขอพิเศษเพิ่มเติม (ถ้ามี)</label>
-            <textarea
-              rows={2}
-              value={specialRequests}
-              onChange={(e) => setSpecialRequests(e.target.value)}
-              placeholder="เช่น อาหารเฉพาะทาง, เวลาที่จะเข้ามาส่งน้อง..."
-              className="liff-input"
-              style={{ minHeight: "80px", resize: "vertical" }}
-            />
-          </div>
+          <section>
+            <label className="liff-section-title">5. คำขอพิเศษ (ถ้ามี)</label>
+            <textarea className="liff-input" rows={3} value={specialRequests}
+              onChange={(event) => setSpecialRequests(event.target.value)} />
+          </section>
 
-          {/* Pricing & Summary Card */}
-          {dateValidation.valid && selectedRoom && (
+          {quoteLoading && <div className="pilot-notice">กำลังตรวจราคาและคิวจากระบบ…</div>}
+          {quoteError && <div className="pilot-notice error">{quoteError}</div>}
+          {quote && (
             <div className="liff-summary-card">
               <div>
-                <div style={{ fontSize: "11px", color: "var(--muted)", fontWeight: 500 }}>
-                  จำนวน {dateValidation.nights} คืน ({selectedPetIds.length} ตัว)
-                </div>
-                <div style={{ fontSize: "14px", fontWeight: 700, color: "var(--ink)", marginTop: "2px" }}>
-                  ยอดประเมินรวม
-                </div>
+                <div className="panel-subtitle">{quote.quantity} {unitLabel[quote.unit]}</div>
+                <strong>{formatBangkokDateTime(quote.startAt)} → {formatBangkokDateTime(quote.endAt)}</strong>
               </div>
-              <div style={{ textAlign: "right" }}>
-                <div style={{ fontSize: "20px", fontWeight: 800, color: "var(--deep)" }}>
-                  ฿{totalEstimatedPrice.toLocaleString()}
-                </div>
-                <div style={{ fontSize: "10px", color: "var(--muted)" }}>ยังไม่รวมค่าบริการพิเศษ</div>
-              </div>
+              <div style={{ textAlign: "right" }}><div className="panel-subtitle">ราคายืนยันจากระบบ</div><strong style={{ fontSize: 20 }}>฿{quote.price.toLocaleString()}</strong></div>
             </div>
           )}
 
-          {/* Submit Error Notice */}
-          {submitError && (
-            <div
-              className="pilot-notice error"
-              style={{ padding: "10px 14px", display: "flex", alignItems: "center", gap: "8px" }}
-            >
-              <span aria-hidden="true">⚠️</span>
-              <span>{submitError}</span>
-            </div>
-          )}
-
-          {/* Submit Button */}
-          <button
-            type="submit"
-            disabled={
-              state === "submitting" ||
-              !dateValidation.valid ||
-              !isRoomCurrentlyAvailable ||
-              selectedPetIds.length === 0 ||
-              !selectedRoomId
-            }
-            className="primary-button liff-submit-btn"
-          >
-            {state === "submitting" ? "กำลังส่งคำขอจอง…" : "ส่งคำขอจองห้องพัก"}
+          {submitError && <div className="pilot-notice error">{submitError}</div>}
+          <button type="submit" className="primary-button liff-submit-btn"
+            disabled={state === "submitting" || quoteLoading || !quote}>
+            {state === "submitting" ? "กำลังส่งคำขอ…" : "ส่งคำขอจอง"}
           </button>
         </form>
       )}

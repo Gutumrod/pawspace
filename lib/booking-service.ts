@@ -230,3 +230,140 @@ export async function markRoomClean(
   if (validation) return { success: false, error: validation };
   return rpc<undefined>(client, actor, "mark_room_clean", { p_room_id: roomId });
 }
+
+export interface BookingV2Quote {
+  pricingMode: "FIXED_PACKAGE";
+  unit: "HOUR" | "DAY" | "MONTH";
+  quantity: number;
+  price: number;
+  startAt: string;
+  endAt: string;
+  ratePlanId: string;
+  roomId: string;
+}
+
+export interface CreateBookingV2Input {
+  ownerId: string;
+  roomId: string;
+  ratePlanId: string;
+  petIds: string[];
+  startAt: string;
+  specialRequests?: string | null;
+}
+
+export interface UpdateBookingV2ScheduleInput {
+  bookingId: string;
+  roomId: string;
+  ratePlanId: string;
+  startAt: string;
+  specialRequests?: string | null;
+}
+
+export interface SetRoomMaintenanceV2Input {
+  roomId: string;
+  startAt: string | null;
+  endAt: string | null;
+}
+
+function validateIsoTimestamp(value: string, field: string): string | null {
+  if (!value || !/([zZ]|[+-]\d{2}:\d{2})$/.test(value) || !Number.isFinite(Date.parse(value))) {
+    return `${field} must be a valid ISO timestamp with timezone.`;
+  }
+  return null;
+}
+
+function validatePetIds(petIds: string[]): string | null {
+  if (!Array.isArray(petIds) || petIds.length < 1) return "At least one pet must be selected.";
+  if (petIds.some((id) => !UUID_RE.test(id))) return "petIds contains an invalid UUID.";
+  if (new Set(petIds).size !== petIds.length) return "petIds cannot contain duplicates.";
+  return null;
+}
+
+function validateBookingV2Input(input: CreateBookingV2Input): string | null {
+  return validateUuid(input.ownerId, "ownerId") ||
+    validateUuid(input.roomId, "roomId") ||
+    validateUuid(input.ratePlanId, "ratePlanId") ||
+    validatePetIds(input.petIds) ||
+    validateIsoTimestamp(input.startAt, "startAt");
+}
+
+export async function quoteBookingV2(
+  client: SupabaseClient,
+  actor: BookingActor,
+  input: CreateBookingV2Input,
+): Promise<ActionResult<BookingV2Quote>> {
+  const validation = validateBookingV2Input(input);
+  if (validation) return { success: false, error: validation };
+  return rpc<BookingV2Quote>(client, actor, "quote_booking_v2", {
+    p_owner_id: input.ownerId,
+    p_room_id: input.roomId,
+    p_rate_plan_id: input.ratePlanId,
+    p_pet_ids: input.petIds,
+    p_start_at: new Date(input.startAt).toISOString(),
+  });
+}
+
+export async function createBookingV2(
+  client: SupabaseClient,
+  actor: BookingActor,
+  input: CreateBookingV2Input,
+): Promise<ActionResult<{ bookingId: string }>> {
+  const validation = validateBookingV2Input(input);
+  if (validation) return { success: false, error: validation };
+
+  const result = await rpc<string>(client, actor, "create_booking_v2", {
+    p_owner_id: input.ownerId,
+    p_room_id: input.roomId,
+    p_rate_plan_id: input.ratePlanId,
+    p_pet_ids: input.petIds,
+    p_start_at: new Date(input.startAt).toISOString(),
+    p_special_requests: input.specialRequests?.trim() || null,
+  });
+  if (!result.success || !result.data) {
+    return { success: false, error: result.error || "Booking V2 creation failed." };
+  }
+  return { success: true, data: { bookingId: result.data } };
+}
+
+export async function updateBookingV2Schedule(
+  client: SupabaseClient,
+  actor: BookingActor,
+  input: UpdateBookingV2ScheduleInput,
+): Promise<ActionResult> {
+  const validation = validateUuid(input.bookingId, "bookingId") ||
+    validateUuid(input.roomId, "roomId") ||
+    validateUuid(input.ratePlanId, "ratePlanId") ||
+    validateIsoTimestamp(input.startAt, "startAt");
+  if (validation) return { success: false, error: validation };
+
+  return rpc<undefined>(client, actor, "update_booking_v2_schedule", {
+    p_booking_id: input.bookingId,
+    p_room_id: input.roomId,
+    p_rate_plan_id: input.ratePlanId,
+    p_start_at: new Date(input.startAt).toISOString(),
+    p_special_requests: input.specialRequests?.trim() || null,
+  });
+}
+
+export async function setRoomMaintenanceV2(
+  client: SupabaseClient,
+  actor: BookingActor,
+  input: SetRoomMaintenanceV2Input,
+): Promise<ActionResult> {
+  const validation = validateUuid(input.roomId, "roomId") ||
+    (input.startAt ? validateIsoTimestamp(input.startAt, "startAt") : null) ||
+    (input.endAt ? validateIsoTimestamp(input.endAt, "endAt") : null);
+  if (validation) return { success: false, error: validation };
+  if ((input.startAt === null) !== (input.endAt === null)) {
+    return { success: false, error: "startAt and endAt must both be null or both be provided." };
+  }
+  if (input.startAt && input.endAt && Date.parse(input.endAt) <= Date.parse(input.startAt)) {
+    return { success: false, error: "endAt must be after startAt." };
+  }
+
+  return rpc<undefined>(client, actor, "set_room_maintenance_v2", {
+    p_room_id: input.roomId,
+    p_start_at: input.startAt ? new Date(input.startAt).toISOString() : null,
+    p_end_at: input.endAt ? new Date(input.endAt).toISOString() : null,
+  });
+}
