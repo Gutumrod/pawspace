@@ -36,15 +36,20 @@ export interface Ps01RuntimeEnv extends SupabasePublicEnv {
 
 export function requirePs01RuntimeEnv(): Ps01RuntimeEnv {
   const publicEnv = requirePublicSupabaseEnv();
-  const runtimeJwt = process.env.PS01_RUNTIME_JWT?.trim();
+  const runtimeJwt = process.env.PS01_LINE_RUNTIME_JWT?.trim();
   if (!runtimeJwt) {
     throw new Error(
-      "Missing required server-only environment variable: PS01_RUNTIME_JWT must contain a product-scoped role=ps01_runtime token."
+      "Missing required server-only environment variable: PS01_LINE_RUNTIME_JWT must contain a short-lived Auth-issued role=ps01_line_runtime token."
     );
   }
   return { ...publicEnv, runtimeJwt };
 }
 
+/**
+ * Rollback/reference only (H3D). The active Customer LINE path uses the Data API
+ * adapter (PS01_LINE_RUNTIME_JWT). These pooler fields are retained until the
+ * H3D replacement proof is green and H3E retires ps01_runtime_login.
+ */
 export interface Ps01RuntimeDatabaseEnv {
   host: string;
   port: number;

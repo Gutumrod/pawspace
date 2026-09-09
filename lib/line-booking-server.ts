@@ -1,6 +1,6 @@
 import "server-only";
 
-import { getPs01RuntimeDatabaseClient } from "./ps01-runtime-db";
+import { getPs01LineRuntimeClient } from "./ps01-runtime";
 import { requireLineLoginEnv } from "./env";
 import {
   getCustomerBookingV2ContextCore,
@@ -22,7 +22,7 @@ export async function getCustomerBookingContextServer(
 ): Promise<CustomerBookingActionResult<CustomerBookingV2Context>> {
   try {
     const { channelId } = requireLineLoginEnv();
-    const runtimeClient = getPs01RuntimeDatabaseClient();
+    const runtimeClient = getPs01LineRuntimeClient();
     const result = await getCustomerBookingV2ContextCore(runtimeClient, channelId, shopId, idToken, fetchImpl);
 
     if (!result.success) {
@@ -42,7 +42,7 @@ export async function quoteCustomerBookingServer(
 ): Promise<BookingV2QuoteResult> {
   try {
     const { channelId } = requireLineLoginEnv();
-    const runtimeClient = getPs01RuntimeDatabaseClient();
+    const runtimeClient = getPs01LineRuntimeClient();
     const result = await quoteCustomerBookingV2Core(runtimeClient, channelId, rawInput, fetchImpl);
     if (!result.success) {
       logger.warn("Customer Booking V2 quote rejected", { code: result.code, error: result.error });
@@ -61,7 +61,7 @@ export async function submitBookingRequestServer(
 ): Promise<SubmitBookingRequestV2Result> {
   try {
     const { channelId } = requireLineLoginEnv();
-    const runtimeClient = getPs01RuntimeDatabaseClient();
+    const runtimeClient = getPs01LineRuntimeClient();
     const result = await submitBookingRequestV2Core(runtimeClient, channelId, rawInput, fetchImpl);
     if (!result.success) {
       logger.warn("Submit Booking V2 request rejected", { code: result.code, error: result.error });

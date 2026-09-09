@@ -69,22 +69,54 @@ for (const rel of coreFiles) {
     fail(`Closed Beta core unexpectedly depends on project admin client: ${rel}`);
   }
 }
-const lineBookingServer = read("lib/line-booking-server.ts");
-if (!lineBookingServer.includes("getPs01RuntimeDatabaseClient")) {
-  fail("Customer Booking V2 is not routed through the bounded PS01 database runtime client.");
-}
-const runtimeDb = read("lib/ps01-runtime-db.ts");
-for (const rpc of [
+const allowlistedRpcs = [
   "get_customer_booking_context_v2_internal",
   "quote_customer_booking_v2_internal",
   "submit_booking_request_v2_internal",
-]) {
-  if (!runtimeDb.includes(rpc)) fail(`Bounded runtime adapter missing allowlisted RPC: ${rpc}`);
+];
+
+// H3D: the active Customer LINE path is the Data API adapter (lib/ps01-runtime.ts),
+// reached through a short-lived Auth-issued role=ps01_line_runtime JWT. It must not
+// use the reusable pooler login or the project service-role credential.
+const lineBookingServer = read("lib/line-booking-server.ts");
+if (!lineBookingServer.includes("getPs01LineRuntimeClient")) {
+  fail("Customer Booking V2 is not routed through the PS01 Data API runtime adapter (H3D).");
+}
+if (lineBookingServer.includes("ps01-runtime-db") || lineBookingServer.includes("getPs01RuntimeDatabaseClient")) {
+  fail("Customer Booking V2 server still imports the direct-DB pooler adapter (H3D replacement incomplete).");
+}
+if (/PS01_RUNTIME_DB_/.test(lineBookingServer)) {
+  fail("Customer Booking V2 server still references PS01_RUNTIME_DB_* pooler env (H3D replacement incomplete).");
+}
+
+const dataApiAdapter = read("lib/ps01-runtime.ts");
+for (const rpc of allowlistedRpcs) {
+  if (!dataApiAdapter.includes(rpc)) fail(`Data API adapter missing allowlisted RPC: ${rpc}`);
+}
+if (!dataApiAdapter.includes("is not allowlisted")) {
+  fail("Data API adapter does not reject non-allowlisted RPC names.");
+}
+if (!dataApiAdapter.includes("ps01_line_runtime")) {
+  fail("Data API adapter does not document the role=ps01_line_runtime token contract.");
+}
+if (
+  dataApiAdapter.includes("local_service") ||
+  dataApiAdapter.includes("service_role") ||
+  dataApiAdapter.includes("SUPABASE_SERVICE_ROLE_KEY") ||
+  dataApiAdapter.includes("PS01_RUNTIME_DB_")
+) {
+  fail("Data API adapter contains cross-product/admin/pooler privilege references.");
+}
+
+// The pooler adapter is retained as rollback/reference only; keep its own guards intact.
+const runtimeDb = read("lib/ps01-runtime-db.ts");
+for (const rpc of allowlistedRpcs) {
+  if (!runtimeDb.includes(rpc)) fail(`Rollback pooler adapter missing allowlisted RPC: ${rpc}`);
 }
 if (runtimeDb.includes("local_service") || runtimeDb.includes("service_role") || runtimeDb.includes("SUPABASE_SERVICE_ROLE_KEY")) {
-  fail("Bounded runtime adapter contains cross-product/admin privilege references.");
+  fail("Rollback pooler adapter contains cross-product/admin privilege references.");
 }
-if (!runtimeDb.includes("ps01_runtime_login.")) fail("Bounded runtime adapter does not fail closed on the PS01 login identity.");
+if (!runtimeDb.includes("ps01_runtime_login.")) fail("Rollback pooler adapter does not fail closed on the PS01 login identity.");
 
 function walkFiles(dir) {
   return fs.readdirSync(dir, { withFileTypes: true }).flatMap((entry) => {
