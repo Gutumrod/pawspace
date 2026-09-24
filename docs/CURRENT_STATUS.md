@@ -1,42 +1,122 @@
-# Current Status - 2026-09-06
+# Current Status - 2026-09-24
 
-**Product:** Pawstia PMS (PS01)
-**Repository branch:** verify/phase13-closure-2026-09-01
-**Phase 13 closure baseline:** `fdd10e7` (`fix(docs): remove evidence whitespace errors`)
-**Repository state note:** worktree cleanliness is operational state, not a durable documentation contract; PS-SR-01 reconciliation is tracked in `docs/PS-SR-01-MERGE-READINESS-2026-09-06.md`
-**Purpose:** current-state overlay only. PRD/architecture contracts, daily logs, and historical evidence keep their own authority.
+**Product:** Pawstia PMS (PS01)  
+**Canonical branch:** `master`  
+**Execution mode:** BUILD-TO-SELL → FIRST REAL STORE CLOSED BETA  
+**Active continuation brief:** `docs/BRIEF-PS01-CONTINUE-TO-FIRST-STORE-CLOSED-BETA-2026-09-24.md`  
+**Continuation marker:** **ACTIVE — MUST CONTINUE FROM FIRST NON-PASS GATE**
 
 ## Verified Current State
-Phase 1-12 are closed. **Phase 13 is CLOSED**: the full isolated Supabase verification matrix passed in CI run
-[33743691064](https://github.com/Gutumrod/pawspace/actions/runs/33743691064), and the independent closure evidence is
-committed in `PHASE13_IMPLEMENTATION_EVIDENCE.md`. The prior failing run `33494605562` (historical Phase 1 isolation
-regression at `supabase/tests/phase1_schema.sql:61`) is recorded as history in the 2026-09-01/09-02 daily logs; the
-staging was corrected (remediated bootstrap `trial`→`trialing` normalization order, deterministic Phase 7 worker-claim
-fixture) and the full matrix re-passed without weakening the failing regression contract.
 
-Owner direction 2026-09-06 = **BUILD-TO-SELL**. Council gates for PS01: Product Gate PASS and Business/Market Gate PASS
-(after BM-1 Founding-Member bounding and BM-2 merchant-owned LINE OA decisions). PS01 immediate ticket is **PS-SR-01**
-(canonical Phase 13 landing/reconciliation — this pass); it is completed here as a documentation reconciliation, not a
-verification rerun.
+Engineering Phase 1–13 is closed.
 
-## Blockers / Gates
-No Phase 13 verification blocker remains. Merge is NOT performed by this pass (PR #4 remains Draft/Open against
-`master`; no push, no production migration or deployment). Open downstream gates from the 2026-09-06 execution brief:
-staging/release engineering (PS-SR-02), integration resilience/recovery (PS-SR-03), controlled real-store Closed Beta
-(PS-SR-04), commercial/payment contract lock (PS-SR-05), then payment collection (PS-SR-06) only after Owner GO.
-`PS-A2` Project B admission and portfolio `P0a-C1` remain separate explicitly-tracked items, not re-decided here.
+Phase 13 independent verification passed and PR #4 was merged into `master` on 2026-09-06. Historical documents that still describe PR #4 as Draft/Open are stale historical state and must not be used as current runtime truth.
 
-## Next Authorized / Prepared Action
-Start `PS-SR-02`: create/prove isolated staging, migration pipeline, environment separation, deploy/rollback, two-tenant
-smoke and release record. No destructive production reset.
+Council status:
 
-## Portfolio Scheduling
-**BUILD-TO-SELL EXECUTION WAVE** (2026-09-06). Module Hub Scan and non-essential new governance/research are paused.
+- Product Gate: PASS
+- Business/Market Gate: PASS
 
-## Evidence Basis
-`verify/phase13-closure-2026-09-01 @ fdd10e7`; `PHASE13_IMPLEMENTATION_EVIDENCE.md`; CI run `33743691064` (PASS);
-failed historical run `33494605562` (2026-09-01 daily log); Council Product/Business-Market PASS; PR #4 Draft/Open.
+PS01 is no longer in initial MVP construction. It is in the **Build-to-Sell / Closed Beta readiness** path.
+
+General paid launch is not yet authorized.
+
+## Post-Master Work Requiring Canonical Reconciliation
+
+The later branch:
+
+`work/ps01-h3d-data-api-20260909`
+
+contains post-Phase-13 work not yet canonicalized into `master`, including:
+
+- Booking V2;
+- room Rate Plans;
+- HOUR / DAY / MONTH booking semantics;
+- historical quote snapshot behavior;
+- overlap / capacity / maintenance protections;
+- Customer LINE request → Staff confirmation flow;
+- H3D Data API runtime path;
+- WSTERA LAB/shared-runtime isolation work;
+- focused test evidence and Owner manual-test runbook.
+
+Latest known branch evidence includes static/pure PASS results, but fresh DB-backed acceptance, live H3D proof and Owner manual acceptance remain required before release.
+
+Historical or branch-local PASS results must not be silently promoted to current release evidence.
+
+## Active Execution Contract
+
+The canonical continuation contract is:
+
+`docs/BRIEF-PS01-CONTINUE-TO-FIRST-STORE-CLOSED-BETA-2026-09-24.md`
+
+The next agent/chat must read that brief first and continue from the **first non-PASS gate**.
+
+Execution gates:
+
+1. **Gate A — Release-candidate reconciliation**
+2. **Gate B — H3D / WSTERA LAB runtime readiness**
+3. **Gate C — Fresh DB-backed Booking V2 acceptance**
+4. **Gate D — Owner manual O-01..O-16**
+5. **Gate E — Defect remediation + candidate closure**
+6. **Gate F — Deploy / rollback / critical-path resilience**
+7. **Gate G — Privacy / Security / PDPA real-data admission**
+8. **Gate H — First real store onboarding + first live operational proof**
+
+Final target for this execution wave:
+
+`FIRST_REAL_STORE_LIVE / CLOSED_BETA_ACTIVE`
+
+## Immediate Next Action
+
+**MUST CONTINUE: Gate A**
+
+Reconcile current `master` with the required work on:
+
+- `build/ps-sr02-staging-2026-09-06`
+- `work/ps01-h3d-data-api-20260909`
+
+Create one auditable release candidate and prove provenance before live runtime/DB acceptance.
+
+Do **not** jump directly to real-store data or onboarding.
+
+## Real-Data Safety Gate
+
+No real customer/pet/staff data may enter the Closed Beta environment until the Privacy / Security / PDPA admission gate in the active continuation brief is PASS.
+
+The gate must cover at minimum:
+
+- data inventory and minimization;
+- consent / lawful-basis workflow where applicable;
+- tenant and staff access control;
+- handling of potentially sensitive free-text/media/care information;
+- retention / deletion / export / offboarding;
+- auditability;
+- actual vendor/subprocessor boundary.
+
+No privileged or production-credential workaround is authorized to bypass a blocked normal runtime path.
+
+## Scope Boundaries
+
+For the first-store Closed Beta, the operational core is the critical path:
+
+`onboarding → rooms → customer/pet → booking → check-in → active stay → check-out → cleaning/available`
+
+Camera, Automated Daily Report, future Care Engine and payment collection are not automatic blockers for the first real store unless actual store workflow evidence proves otherwise.
+
+Payment/deposit remains deferred pending review of the stable SB01 Shared Billing Core contract.
+
+## Stop Boundary
+
+When one real store has been onboarded, the privacy/security gate has passed, authorized staff can operate the core workflow, and at least one real operational loop has been evidenced:
+
+`FIRST_REAL_STORE_LIVE / CLOSED_BETA_ACTIVE`
+
+**STOP and return evidence to Owner.**
+
+Do not automatically continue into PS-SR-05 / PS-SR-06, general paid launch, Care Engine implementation, or multi-store expansion without a new Owner decision.
 
 ## Change Rule
-Update this file when branch/gate/runtime reality changes. Do not rewrite historical evidence to make an old result look
-current.
+
+Update this file whenever branch/gate/runtime reality changes.
+
+Do not rewrite historical evidence to make an old result look current. Preserve old PASS/FAIL/BLOCKED observations and add new evidence tied to exact branch/SHA/environment/date.
