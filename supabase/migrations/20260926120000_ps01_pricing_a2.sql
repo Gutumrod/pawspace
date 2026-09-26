@@ -1,8 +1,5 @@
 -- Owner-approved PS01 pricing update (Addendum A-2, 2026-09-26).
 -- Stop before catalog changes if Enterprise or an annual plan already has any shop assignment.
-ALTER TABLE commercial_packages
-  ADD COLUMN IF NOT EXISTS available_for_sale BOOLEAN NOT NULL DEFAULT TRUE;
-
 -- One statement = one transaction: the locks (same order as package mutations) are held
 -- from the checks through the price update. A bare LOCK TABLE is rejected outside a
 -- transaction block by the migration runner (SQLSTATE 25P01).
@@ -18,15 +15,17 @@ BEGIN
     RAISE EXCEPTION 'PS01_ANNUAL_ASSIGNED_SHOP_REQUIRES_OWNER_REVIEW';
   END IF;
 
-  UPDATE commercial_packages
-  SET monthly_price = CASE id
-        WHEN 'starter' THEN 590
-        WHEN 'pro' THEN 990
-        ELSE monthly_price
-      END,
-      annual_price = NULL,
-      available_for_sale = (id <> 'enterprise')
-  WHERE id IN ('starter', 'pro', 'enterprise');
+  EXECUTE 'ALTER TABLE commercial_packages
+    ADD COLUMN IF NOT EXISTS available_for_sale BOOLEAN NOT NULL DEFAULT TRUE';
+  EXECUTE 'UPDATE commercial_packages
+    SET monthly_price = CASE id
+          WHEN ''starter'' THEN 590
+          WHEN ''pro'' THEN 990
+          ELSE monthly_price
+        END,
+        annual_price = NULL,
+        available_for_sale = (id <> ''enterprise'')
+    WHERE id IN (''starter'', ''pro'', ''enterprise'')';
 END;
 $$;
 
