@@ -1,10 +1,14 @@
 -- Owner-approved PS01 pricing update (Addendum A-2, 2026-09-26).
--- Stop before catalog changes if Enterprise already has any shop assignment.
--- Match package mutation lock order and hold these locks through migration commit.
-LOCK TABLE shop_subscriptions, shop_commercial_assignments IN SHARE ROW EXCLUSIVE MODE;
+-- Stop before catalog changes if Enterprise or an annual plan already has any shop assignment.
+ALTER TABLE commercial_packages
+  ADD COLUMN IF NOT EXISTS available_for_sale BOOLEAN NOT NULL DEFAULT TRUE;
 
+-- One statement = one transaction: the locks (same order as package mutations) are held
+-- from the checks through the price update. A bare LOCK TABLE is rejected outside a
+-- transaction block by the migration runner (SQLSTATE 25P01).
 DO $$
 BEGIN
+  LOCK TABLE shop_subscriptions, shop_commercial_assignments IN SHARE ROW EXCLUSIVE MODE;
   IF EXISTS (SELECT 1 FROM shop_subscriptions WHERE package_id = 'enterprise')
      OR EXISTS (SELECT 1 FROM shop_commercial_assignments WHERE package_id = 'enterprise') THEN
     RAISE EXCEPTION 'PS01_ENTERPRISE_ASSIGNED_SHOP_REQUIRES_OWNER_REVIEW';
@@ -13,21 +17,18 @@ BEGIN
      OR EXISTS (SELECT 1 FROM shop_commercial_assignments WHERE billing_interval = 'annual') THEN
     RAISE EXCEPTION 'PS01_ANNUAL_ASSIGNED_SHOP_REQUIRES_OWNER_REVIEW';
   END IF;
+
+  UPDATE commercial_packages
+  SET monthly_price = CASE id
+        WHEN 'starter' THEN 590
+        WHEN 'pro' THEN 990
+        ELSE monthly_price
+      END,
+      annual_price = NULL,
+      available_for_sale = (id <> 'enterprise')
+  WHERE id IN ('starter', 'pro', 'enterprise');
 END;
 $$;
-
-ALTER TABLE commercial_packages
-  ADD COLUMN IF NOT EXISTS available_for_sale BOOLEAN NOT NULL DEFAULT TRUE;
-
-UPDATE commercial_packages
-SET monthly_price = CASE id
-      WHEN 'starter' THEN 590
-      WHEN 'pro' THEN 990
-      ELSE monthly_price
-    END,
-    annual_price = NULL,
-    available_for_sale = (id <> 'enterprise')
-WHERE id IN ('starter', 'pro', 'enterprise');
 
 DROP POLICY IF EXISTS commercial_packages_select_policy ON commercial_packages;
 CREATE POLICY commercial_packages_select_policy ON commercial_packages
