@@ -41,4 +41,9 @@ Module Hub remains read-only. No modules are copied into PawSpace.
 
 ## Results
 
-Pending verification and PR creation. Final evidence is recorded in `D:\AI-Workspace\runtime\relay\house-20260926\ps01price\REPORT-PS01-PRICE.md`.
+- `pnpm install --frozen-lockfile`, `pnpm lint`, `pnpm build`, and the targeted Phase 9 entitlement unit tests passed (5/5).
+- `supabase test db` could not connect to local PostgreSQL at `127.0.0.1:54322`; Docker CLI is unavailable. SQL behavior remains unverified locally.
+- Commit: `b69635a64a53878a7930f129936e32c4056cf59b`.
+- PR: https://github.com/Gutumrod/pawspace/pull/5 — open to `master`; CI `verify` was pending at report time.
+- No production database was queried or changed. The Enterprise/annual migration guards remain mandatory before any real apply.
+- Final evidence is recorded in `D:\AI-Workspace\runtime\relay\house-20260926\ps01price\REPORT-PS01-PRICE.md`.
