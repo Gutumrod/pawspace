@@ -148,8 +148,11 @@ jobs:
           held="$(mktemp -d)"
           restore() { mv "$held"/*.sql supabase/migrations/ 2>/dev/null || true; }
           trap restore EXIT
-          # Stage all Phase 13 migrations to held so we can reset to Phase 12 baseline.
-          find supabase/migrations -name '20260825*.sql' -exec mv -t "$held" {} +
+          # Stage Phase 13 and every later migration to held so we can reset to the Phase 12
+          # baseline (later migrations depend on Phase 13 tables, e.g. shop_subscriptions).
+          for f in supabase/migrations/*.sql; do
+            if [[ "$(basename "$f")" > "20260825" ]]; then mv "$f" "$held"/; fi
+          done
           supabase db reset
           # Insert a legacy shop with subscription_status='trial' (the Phase 3 contract).
           psql "$DB_URL" -v ON_ERROR_STOP=1 -c "INSERT INTO shops (name, slug, subscription_status, created_at) VALUES ('Legacy Trial', 'legacy-trial-normalize', 'trial', now() - make_interval(days => 5));"

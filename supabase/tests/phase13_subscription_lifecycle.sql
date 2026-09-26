@@ -202,7 +202,7 @@ END $$;
 SET LOCAL ROLE service_role;
 SELECT set_config('request.jwt.claim.role','service_role',true);
 
--- Pro, Enterprise, and valid Founding Member remain unlimited.
+-- Pro and valid Founding Member remain unlimited. Enterprise is not for sale.
 DO $$
 DECLARE
   v_shop uuid;
@@ -213,7 +213,6 @@ BEGIN
   FOR v_package,v_offer IN
     SELECT * FROM (VALUES
       ('pro'::text,'standard'::text),
-      ('enterprise'::text,'standard'::text),
       ('starter'::text,'founding_member'::text)
     ) AS packages(package_id,offer)
   LOOP
@@ -223,7 +222,7 @@ BEGIN
     PERFORM set_shop_commercial_package(v_shop,v_package,v_offer,'monthly','system','unlimited regression',gen_random_uuid(),NULL);
     INSERT INTO rooms(shop_id,room_number,room_type,capacity_pets,base_price_per_night,status)
     SELECT v_shop,'ROOM-'||n,'standard',1,500,'available' FROM generate_series(1,11) n;
-    INSERT INTO pet_owners(id,shop_id,first_name,phone) VALUES(v_owner,v_shop,'Unlimited Owner',CASE WHEN v_package='pro' THEN '0813200001' WHEN v_package='enterprise' THEN '0813200002' ELSE '0813200003' END);
+    INSERT INTO pet_owners(id,shop_id,first_name,phone) VALUES(v_owner,v_shop,'Unlimited Owner',CASE WHEN v_package='pro' THEN '0813200001' ELSE '0813200003' END);
     INSERT INTO pets(shop_id,owner_id,name,species)
     SELECT v_shop,v_owner,'Pet '||n,'dog' FROM generate_series(1,301) n;
     IF (SELECT count(*) FROM rooms WHERE shop_id=v_shop)<>11
@@ -266,17 +265,36 @@ DECLARE
   denied boolean := false;
 BEGIN
   SELECT count(*) INTO v_before FROM subscription_audit_log WHERE shop_id=v_shop;
-  PERFORM set_shop_commercial_package(v_shop,'pro','standard','annual','system','annual package',v_key,NULL);
-  PERFORM set_shop_commercial_package(v_shop,'pro','standard','annual','system','annual package',v_key,NULL);
+  PERFORM set_shop_commercial_package(v_shop,'pro','standard','monthly','system','monthly package',v_key,NULL);
+  PERFORM set_shop_commercial_package(v_shop,'pro','standard','monthly','system','monthly package',v_key,NULL);
   SELECT count(*) INTO v_after FROM subscription_audit_log WHERE shop_id=v_shop;
   IF v_after<>v_before+1 THEN RAISE EXCEPTION 'Package retry created duplicate/missing audit'; END IF;
-  IF NOT EXISTS (SELECT 1 FROM shop_subscriptions WHERE shop_id=v_shop AND package_id='pro' AND billing_interval='annual') THEN
+  IF NOT EXISTS (SELECT 1 FROM shop_subscriptions WHERE shop_id=v_shop AND package_id='pro' AND billing_interval='monthly') THEN
     RAISE EXCEPTION 'Authoritative billing interval was not persisted';
   END IF;
   BEGIN
     PERFORM set_shop_commercial_package(v_shop,'starter','standard','monthly','system','conflicting retry',v_key,NULL);
   EXCEPTION WHEN OTHERS THEN denied := SQLERRM LIKE '%COMMERCIAL_PACKAGE_IDEMPOTENCY_CONFLICT%'; END;
   IF NOT denied THEN RAISE EXCEPTION 'Package idempotency conflict was not rejected'; END IF;
+  denied := false;
+  BEGIN
+    PERFORM set_shop_commercial_package(v_shop,'pro','standard','annual','system','unapproved annual',gen_random_uuid(),NULL);
+  EXCEPTION WHEN OTHERS THEN denied := SQLERRM LIKE '%ANNUAL_PRICE_NOT_APPROVED%'; END;
+  IF NOT denied THEN RAISE EXCEPTION 'Annual package without Owner-approved price was not rejected'; END IF;
+END $$;
+
+-- Enterprise cannot be newly assigned while the owner keeps it closed for sale.
+DO $$
+DECLARE
+  v_shop uuid := (SELECT pv.v::uuid FROM phase13_values AS pv WHERE k='shop');
+  denied boolean := false;
+BEGIN
+  BEGIN
+    PERFORM set_shop_commercial_package(v_shop,'enterprise','standard','monthly','system','closed plan',gen_random_uuid(),NULL);
+  EXCEPTION WHEN OTHERS THEN
+    denied := SQLERRM LIKE '%COMMERCIAL_PACKAGE_NOT_AVAILABLE%';
+  END;
+  IF NOT denied THEN RAISE EXCEPTION 'Enterprise assignment was not rejected'; END IF;
 END $$;
 
 -- Lifecycle timestamps, allowed/illegal transitions, terminal continuity, and no false audit.

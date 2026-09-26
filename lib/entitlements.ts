@@ -6,6 +6,7 @@ export interface PackageDefinition {
   name: string;
   monthlyPrice: number;
   annualPrice: number | null;
+  availableForSale: boolean;
   roomLimit: number | null;
   petHistoryLimit: number | null;
   supportTier: string | null;
@@ -15,8 +16,9 @@ export const CANONICAL_PACKAGES: Record<string, PackageDefinition> = {
   starter: {
     id: "starter",
     name: "Starter",
-    monthlyPrice: 990,
-    annualPrice: 9900,
+    monthlyPrice: 590,
+    annualPrice: null,
+    availableForSale: true,
     roomLimit: 10,
     petHistoryLimit: 300,
     supportTier: null,
@@ -24,8 +26,9 @@ export const CANONICAL_PACKAGES: Record<string, PackageDefinition> = {
   pro: {
     id: "pro",
     name: "Pro",
-    monthlyPrice: 1490,
-    annualPrice: 14900,
+    monthlyPrice: 990,
+    annualPrice: null,
+    availableForSale: true,
     roomLimit: null,
     petHistoryLimit: null,
     supportTier: null,
@@ -34,7 +37,8 @@ export const CANONICAL_PACKAGES: Record<string, PackageDefinition> = {
     id: "enterprise",
     name: "Enterprise",
     monthlyPrice: 2490,
-    annualPrice: 24900,
+    annualPrice: null,
+    availableForSale: false,
     roomLimit: null,
     petHistoryLimit: null,
     supportTier: "priority",

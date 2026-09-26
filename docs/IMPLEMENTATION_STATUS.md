@@ -15,6 +15,7 @@
 - Owner direction 2026-09-06 = **BUILD-TO-SELL**. Council Product Gate PASS and Business/Market Gate PASS for PS01. Immediate ticket is `PS-SR-01` (canonical landing/reconciliation of the closed Phase 13 evidence); it is a documentation reconciliation, not a verification rerun.
 - Booking Stage 4 is complete; `PS-A2` Project B admission remains a separate explicitly-tracked track.
 - Portfolio `P0a-C1` is not re-decided by this reconciliation.
+- Owner Addendum A-2 (2026-09-26) pricing update is implemented in this branch with a forward migration; local DB verification is blocked because Supabase local PostgreSQL is unavailable. No real DB was queried or changed.
 
 ## 1. Current gate status
 
@@ -43,7 +44,7 @@
 - Customer self-booking through LINE LIFF.
 - Pilot onboarding, CSV preview/import, authoritative import audit and integration-readiness checks.
 - Subscription lifecycle + commercial access authority + append-only subscription audit.
-- Starter hard quotas: 10 rooms / 300 current pet records; Pro/Enterprise/valid Founding Member unlimited.
+- Starter hard quotas: 10 rooms / 300 current pet records; Pro/valid Founding Member unlimited. Enterprise retains its historical unlimited entitlement definition but is not for sale under Owner Addendum A-2 (2026-09-26); the forward migration stops if it finds an Enterprise shop assignment.
 
 ---
 

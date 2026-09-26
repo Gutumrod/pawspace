@@ -176,5 +176,6 @@
 * V1 worker concurrency = 1; claim ตาม retry/queue order, มี processing lease + stale recovery + bounded backoff, และทุก event re-read source-of-truth ก่อนเขียน Sheet; UPSERT ของ Pet ที่ถูกลบแล้วต้อง converge เป็น DELETE
 #### 11. Pricing & Feature Gating Enforcement (Decision 10A & C2)
 * **Historical commercial-stage intent:** ช่วงก่อน monetization เคยไม่บังคับ hard quota
-* **Current implementation (Engineering Phase 13):** บังคับ authoritative quota แล้วที่ database boundary — Starter: 10 ห้อง / 300 pet records; Pro/Enterprise/valid Founding Member: unlimited
-* **Decision C2:** Founding Member 10 ร้านแรก ได้รับสิทธิ์ **Pro Entitlement @ 990 บ./ด. ตลอดชีพ** ตราบเท่าที่ต่ออายุต่อเนื่อง (Non-transferable และไม่รวม Future Paid Add-ons)
+* **Current implementation (Engineering Phase 13):** บังคับ authoritative quota แล้วที่ database boundary — Starter: 10 ห้อง / 300 pet records; Pro/valid Founding Member: unlimited. Enterprise คง entitlement contract เดิมแต่ไม่เปิดขายตาม Owner Addendum A-2.
+* **Decision C2:** Founding Member 10 ร้านแรก ได้รับสิทธิ์ **Pro Entitlement @ ฿990 / $28 ต่อเดือน** ตราบเท่าที่ต่ออายุต่อเนื่อง (Non-transferable และไม่รวม Future Paid Add-ons); ราคานี้คงเดิมตาม Owner Addendum A-2 วันที่ 2026-09-26.
+* **Owner Addendum A-2 (2026-09-26):** Starter ฿590 / $17 ต่อเดือน (10 ห้อง / 300 pet records); Pro ฿990 / $28 ต่อเดือน (ไม่จำกัดห้อง / สัตว์); Enterprise ฿2,490 ยังไม่เปิดขาย. ราคาต่อปียังไม่อนุมัติ. THB/USD เป็นราคาคงที่ตามสกุลที่ระบบเลือก ห้ามแปลงอัตโนมัติ.
