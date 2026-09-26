@@ -106,13 +106,13 @@ BEGIN
   SELECT * INTO s FROM commercial_packages WHERE id='starter';
   SELECT * INTO p FROM commercial_packages WHERE id='pro';
   SELECT * INTO e FROM commercial_packages WHERE id='enterprise';
-  IF s.monthly_price<>990 OR s.annual_price<>9900 OR s.room_limit<>10 OR s.pet_history_limit<>300 OR s.support_tier IS NOT NULL THEN
+  IF s.monthly_price<>590 OR s.annual_price IS NOT NULL OR s.room_limit<>10 OR s.pet_history_limit<>300 OR s.support_tier IS NOT NULL OR NOT s.available_for_sale THEN
     RAISE EXCEPTION 'Starter commercial facts drifted';
   END IF;
-  IF p.monthly_price<>1490 OR p.annual_price<>14900 OR p.room_limit IS NOT NULL OR p.pet_history_limit IS NOT NULL OR p.support_tier IS NOT NULL THEN
+  IF p.monthly_price<>990 OR p.annual_price IS NOT NULL OR p.room_limit IS NOT NULL OR p.pet_history_limit IS NOT NULL OR p.support_tier IS NOT NULL OR NOT p.available_for_sale THEN
     RAISE EXCEPTION 'Pro commercial facts drifted';
   END IF;
-  IF e.monthly_price<>2490 OR e.annual_price<>24900 OR e.room_limit IS NOT NULL OR e.pet_history_limit IS NOT NULL OR e.support_tier<>'priority' THEN
+  IF e.monthly_price<>2490 OR e.annual_price IS NOT NULL OR e.room_limit IS NOT NULL OR e.pet_history_limit IS NOT NULL OR e.support_tier<>'priority' OR e.available_for_sale THEN
     RAISE EXCEPTION 'Enterprise commercial facts drifted';
   END IF;
 END $$;
@@ -120,13 +120,20 @@ END $$;
 SELECT set_config('request.jwt.claim.role','authenticated',true);
 SET LOCAL ROLE authenticated;
 
+DO $$
+BEGIN
+  IF EXISTS (SELECT 1 FROM commercial_packages WHERE id='enterprise') THEN
+    RAISE EXCEPTION 'Enterprise package must not be visible for sale to authenticated customers';
+  END IF;
+END $$;
+
 -- Owner and manager can resolve their own shop; plain staff cannot read assignment or privileged entitlement.
 SELECT set_config('request.jwt.claim.sub',(SELECT v FROM phase9_values WHERE k='owner_a'),true);
 DO $$
 DECLARE e record; assignment_count int;
 BEGIN
   SELECT * INTO e FROM get_shop_effective_entitlement((SELECT v::uuid FROM phase9_values WHERE k='shop_a'));
-  IF e.package_id<>'starter' OR e.monthly_price<>990 OR e.annual_price<>9900 OR e.room_limit<>10 OR e.pet_history_limit<>300 THEN
+  IF e.package_id<>'starter' OR e.monthly_price<>590 OR e.annual_price IS NOT NULL OR e.room_limit<>10 OR e.pet_history_limit<>300 THEN
     RAISE EXCEPTION 'Owner Starter entitlement incorrect';
   END IF;
   SELECT COUNT(*) INTO assignment_count FROM shop_commercial_assignments;
