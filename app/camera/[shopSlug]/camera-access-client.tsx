@@ -1,6 +1,8 @@
 "use client";
 
 import { FormEvent, useState } from "react";
+import { useTranslations } from "next-intl";
+import { LanguageToggle } from "@/app/components/language-toggle";
 
 type FeedState =
   | { status: "locked"; message?: string }
@@ -16,6 +18,7 @@ export default function CameraAccessClient({
   shopSlug,
   initialFeed,
 }: CameraAccessClientProps) {
+  const t = useTranslations("camera");
   const [code, setCode] = useState("");
   const [feed, setFeed] = useState<FeedState>(
     initialFeed
@@ -70,13 +73,13 @@ export default function CameraAccessClient({
       }
 
       const message = response.status === 429
-        ? "ลองรหัสเกินจำนวนที่กำหนด กรุณารอแล้วลองใหม่"
+        ? t("errorRateLimited")
         : response.status === 503
-          ? "กล้องยังไม่พร้อมใช้งาน"
-          : "รหัสเข้าดูกล้องไม่ถูกต้อง";
+          ? t("errorCameraUnavailable")
+          : t("errorInvalidCode");
       setFeed({ status: "locked", message });
     } catch {
-      setFeed({ status: "locked", message: "ไม่สามารถเชื่อมต่อ Live Camera ได้" });
+      setFeed({ status: "locked", message: t("errorConnection") });
     } finally {
       setSubmitting(false);
     }
@@ -86,20 +89,25 @@ export default function CameraAccessClient({
     <main className="min-h-screen bg-slate-50 px-4 py-10 text-slate-900">
       <section className="mx-auto max-w-4xl overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm">
         <header className="border-b border-slate-100 px-6 py-5">
-          <p className="text-sm font-medium text-slate-500">PawSpace Live Camera</p>
-          <h1 className="mt-1 text-2xl font-semibold">Live Feed</h1>
+          <div className="flex items-start justify-between gap-3">
+            <div>
+              <p className="text-sm font-medium text-slate-500">{t("brandLabel")}</p>
+              <h1 className="mt-1 text-2xl font-semibold">{t("heading")}</h1>
+            </div>
+            <LanguageToggle />
+          </div>
         </header>
 
         {feed.status === "ready" ? (
           <div className="p-4 sm:p-6">
             <div className="mb-3 flex items-center justify-between gap-3 text-sm text-slate-500">
               <span>{feed.deviceName}</span>
-              <span>Session จำกัดสิทธิ์เฉพาะ camera:view</span>
+              <span>{t("sessionScope")}</span>
             </div>
             <div className="aspect-video overflow-hidden rounded-2xl bg-black">
               <iframe
                 src={feed.streamPath}
-                title="PawSpace live camera feed"
+                title={t("streamTitle")}
                 className="h-full w-full border-0"
                 allow="autoplay; fullscreen"
                 referrerPolicy="no-referrer"
@@ -107,11 +115,11 @@ export default function CameraAccessClient({
             </div>
           </div>
         ) : feed.status === "loading" ? (
-          <div className="p-10 text-center text-slate-500">กำลังตรวจสอบสิทธิ์เข้าดูกล้อง…</div>
+          <div className="p-10 text-center text-slate-500">{t("checkingAccess")}</div>
         ) : (
           <form onSubmit={submitCode} className="mx-auto max-w-md p-6 sm:p-10">
             <label htmlFor="camera-code" className="block text-sm font-medium text-slate-700">
-              Visitor code
+              {t("visitorCodeLabel")}
             </label>
             <input
               id="camera-code"
@@ -130,10 +138,10 @@ export default function CameraAccessClient({
               disabled={submitting}
               className="mt-5 w-full rounded-2xl bg-slate-900 px-4 py-3 font-medium text-white disabled:opacity-50"
             >
-              {submitting ? "กำลังตรวจสอบ…" : "เข้าดู Live Camera"}
+              {submitting ? t("verifying") : t("submit")}
             </button>
             <p className="mt-4 text-xs leading-5 text-slate-500">
-              รหัสจะถูกตรวจผ่านระบบที่จำกัดจำนวนครั้ง และ session สำหรับดูกล้องมีอายุ 30 นาที
+              {t("codeNotice")}
             </p>
           </form>
         )}

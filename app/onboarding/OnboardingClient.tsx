@@ -2,10 +2,12 @@
 
 import React, { useState, useTransition } from "react";
 import Link from "next/link";
+import { useTranslations } from "next-intl";
 import type { StaffContext } from "@/lib/tenant-context";
 import type { OperationsDTO, RoomType } from "@/lib/operations-service";
 import type { PilotReadinessEvaluation } from "@/lib/pilot-readiness-service";
 import type { ImportPreviewSummary, ImportExecutionResult } from "@/lib/csv-import-service";
+import { LanguageToggle } from "@/app/components/language-toggle";
 import {
   previewCsvImportAction,
   executeCsvImportAction,
@@ -32,6 +34,7 @@ export default function OnboardingClient({
   initialOperations,
   initialReadiness,
 }: Props) {
+  const t = useTranslations("onboarding");
   const [activeTab, setActiveTab] = useState<"readiness" | "import" | "rooms" | "staff" | "profile">("readiness");
   const [isPending, startTransition] = useTransition();
 
@@ -70,7 +73,7 @@ export default function OnboardingClient({
 
   const handlePreviewCsv = () => {
     if (!csvInput.trim()) {
-      setNotice({ type: "error", message: "Please paste or enter CSV content first." });
+      setNotice({ type: "error", message: t("noticePleaseEnterCsv") });
       return;
     }
     setNotice(null);
@@ -82,17 +85,17 @@ export default function OnboardingClient({
         setPreview(res.preview);
         setNotice({
           type: "ok",
-          message: `Preview generated: ${res.preview.validRows} valid rows (${res.preview.newCustomers} new customers, ${res.preview.newPets} new pets). Zero database writes.`,
+          message: t("noticePreviewGenerated", { validRows: res.preview.validRows, newCustomers: res.preview.newCustomers, newPets: res.preview.newPets }),
         });
       } else {
-        setNotice({ type: "error", message: res.error || "Failed to preview CSV." });
+        setNotice({ type: "error", message: res.error || t("noticePreviewFailed") });
       }
     });
   };
 
   const handleExecuteImport = () => {
     if (!preview || preview.validRows === 0) {
-      setNotice({ type: "error", message: "No valid rows ready to import." });
+      setNotice({ type: "error", message: t("noticeNoValidRows") });
       return;
     }
     setNotice(null);
@@ -103,11 +106,11 @@ export default function OnboardingClient({
         setImportResult(res.result);
         setNotice({
           type: "ok",
-          message: `Import complete! Created ${res.result.createdCustomers} customer(s) and ${res.result.createdPets} pet(s). Skipped ${res.result.skippedDuplicates} duplicate(s).`,
+          message: t("noticeImportComplete", { customers: res.result.createdCustomers, pets: res.result.createdPets, duplicates: res.result.skippedDuplicates }),
         });
         await refreshReadiness();
       } else {
-        setNotice({ type: "error", message: res.error || "Failed to execute import." });
+        setNotice({ type: "error", message: res.error || t("noticeImportFailed") });
       }
     });
   };
@@ -115,7 +118,7 @@ export default function OnboardingClient({
   const handleCreateRoom = (e: React.FormEvent) => {
     e.preventDefault();
     if (!roomNumber.trim()) {
-      setNotice({ type: "error", message: "Room number is required." });
+      setNotice({ type: "error", message: t("noticeRoomNumberRequired") });
       return;
     }
     setNotice(null);
@@ -129,11 +132,11 @@ export default function OnboardingClient({
       });
 
       if (res.success) {
-        setNotice({ type: "ok", message: `Room ${roomNumber} created successfully.` });
+        setNotice({ type: "ok", message: t("noticeRoomCreated", { roomNumber }) });
         setRoomNumber("");
         await refreshReadiness();
       } else {
-        setNotice({ type: "error", message: res.error || "Failed to create room." });
+        setNotice({ type: "error", message: res.error || t("noticeRoomCreateFailed") });
       }
     });
   };
@@ -141,7 +144,7 @@ export default function OnboardingClient({
   const handleInviteStaff = (e: React.FormEvent) => {
     e.preventDefault();
     if (!staffEmail.trim() || !staffName.trim()) {
-      setNotice({ type: "error", message: "Staff email and name are required." });
+      setNotice({ type: "error", message: t("noticeStaffRequired") });
       return;
     }
     setNotice(null);
@@ -155,13 +158,13 @@ export default function OnboardingClient({
       });
 
       if (res.success) {
-        setNotice({ type: "ok", message: `Staff member ${staffName} invited successfully.` });
+        setNotice({ type: "ok", message: t("noticeStaffInvited", { name: staffName }) });
         setStaffEmail("");
         setStaffName("");
         setStaffPassword("");
         await refreshReadiness();
       } else {
-        setNotice({ type: "error", message: res.error || "Failed to invite staff." });
+        setNotice({ type: "error", message: res.error || t("noticeStaffInviteFailed") });
       }
     });
   };
@@ -169,7 +172,7 @@ export default function OnboardingClient({
   const handleUpdateProfile = (e: React.FormEvent) => {
     e.preventDefault();
     if (!shopName.trim()) {
-      setNotice({ type: "error", message: "Shop name is required." });
+      setNotice({ type: "error", message: t("noticeShopNameRequired") });
       return;
     }
     setNotice(null);
@@ -182,10 +185,10 @@ export default function OnboardingClient({
       });
 
       if (res.success) {
-        setNotice({ type: "ok", message: "Shop profile updated successfully." });
+        setNotice({ type: "ok", message: t("noticeProfileUpdated") });
         await refreshReadiness();
       } else {
-        setNotice({ type: "error", message: res.error || "Failed to update profile." });
+        setNotice({ type: "error", message: res.error || t("noticeProfileFailed") });
       }
     });
   };
@@ -198,18 +201,19 @@ export default function OnboardingClient({
           <div>
             <div className="dashboard-title-row">
               <div className="login-mark">P</div>
-              <h1 className="dashboard-title">{readiness.shopName || "Pilot Onboarding Hub"}</h1>
+              <h1 className="dashboard-title">{readiness.shopName || t("defaultHeading")}</h1>
               <span className={`dashboard-badge ${readiness.isPilotReady ? "mint" : "peach"}`}>
-                {readiness.isPilotReady ? "🟢 PILOT READY" : "🟡 ONBOARDING IN PROGRESS"}
+                {readiness.isPilotReady ? t("badgeReady") : t("badgeInProgress")}
               </span>
             </div>
             <p className="dashboard-copy">
-              Closed Beta Readiness Hub · Signed in as <strong>{initialStaff.name}</strong> ({initialStaff.role.toUpperCase()})
+              Closed Beta Readiness Hub · {t("signedInAs")} <strong>{initialStaff.name}</strong> ({initialStaff.role.toUpperCase()})
             </p>
           </div>
           <div className="header-actions">
+            <LanguageToggle />
             <Link href="/dashboard" className="secondary-button" style={{ display: "inline-flex", alignItems: "center", textDecoration: "none" }}>
-              ← Back to Dashboard
+              {t("backToDashboard")}
             </Link>
           </div>
         </header>
@@ -228,21 +232,21 @@ export default function OnboardingClient({
             className={`secondary-button ${activeTab === "readiness" ? "primary-button" : ""}`}
             onClick={() => { setActiveTab("readiness"); setNotice(null); }}
           >
-            📋 Pilot Readiness ({readiness.readinessPercentage}%)
+            {t("tabReadiness", { percent: readiness.readinessPercentage })}
           </button>
           <button
             type="button"
             className={`secondary-button ${activeTab === "import" ? "primary-button" : ""}`}
             onClick={() => { setActiveTab("import"); setNotice(null); }}
           >
-            📥 CSV Data Import
+            {t("tabImport")}
           </button>
           <button
             type="button"
             className={`secondary-button ${activeTab === "rooms" ? "primary-button" : ""}`}
             onClick={() => { setActiveTab("rooms"); setNotice(null); }}
           >
-            🚪 Room Matrix Setup
+            {t("tabRooms")}
           </button>
           {initialStaff.role === "owner" && (
             <button
@@ -250,7 +254,7 @@ export default function OnboardingClient({
               className={`secondary-button ${activeTab === "staff" ? "primary-button" : ""}`}
               onClick={() => { setActiveTab("staff"); setNotice(null); }}
             >
-              👥 Staff Team Setup
+              {t("tabStaff")}
             </button>
           )}
           <button
@@ -258,7 +262,7 @@ export default function OnboardingClient({
             className={`secondary-button ${activeTab === "profile" ? "primary-button" : ""}`}
             onClick={() => { setActiveTab("profile"); setNotice(null); }}
           >
-            ⚙️ Shop Profile
+            {t("tabProfile")}
           </button>
         </nav>
 
@@ -269,10 +273,10 @@ export default function OnboardingClient({
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "12px" }}>
                 <div>
                   <h2 style={{ fontSize: "16px", color: "var(--ink)", textTransform: "none", fontWeight: 800 }}>
-                    Closed Beta Readiness Checklist
+                    {t("readinessHeading")}
                   </h2>
                   <p className="dashboard-copy">
-                    Deterministic evaluation for 5–10 Pilot Hotel onboarding.
+                    {t("readinessIntro")}
                   </p>
                 </div>
                 <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
@@ -285,7 +289,7 @@ export default function OnboardingClient({
                     onClick={() => startTransition(refreshReadiness)}
                     disabled={isPending}
                   >
-                    🔄 Re-evaluate
+                    {t("reEvaluate")}
                   </button>
                 </div>
               </div>
@@ -305,7 +309,7 @@ export default function OnboardingClient({
               {/* Blocking issues banner if not ready */}
               {!readiness.isPilotReady && readiness.blockingIssues.length > 0 && (
                 <div className="pilot-notice error" style={{ marginBottom: "20px" }}>
-                  <strong>Blocking Issues for Pilot Launch:</strong>
+                  <strong>{t("blockingIssuesHeading")}</strong>
                   <ul style={{ margin: "6px 0 0", paddingLeft: "20px" }}>
                     {readiness.blockingIssues.map((issue, idx) => (
                       <li key={idx}>{issue}</li>
@@ -336,7 +340,7 @@ export default function OnboardingClient({
                         <strong style={{ fontSize: "14px", color: "var(--ink)" }}>{item.title}</strong>
                         {item.isCritical && (
                           <span style={{ fontSize: "10px", padding: "2px 6px", borderRadius: "6px", background: "#ffd1dc", color: "#9b3f59", fontWeight: 700 }}>
-                            REQUIRED
+                            {t("required")}
                           </span>
                         )}
                       </div>
@@ -345,13 +349,13 @@ export default function OnboardingClient({
                       </p>
                       {!item.isReady && item.remediation && (
                         <p style={{ margin: "4px 0 0", fontSize: "11px", color: "#956020" }}>
-                          👉 Fix: {item.remediation}
+                          👉 {t("fixPrefix")} {item.remediation}
                         </p>
                       )}
                     </div>
                     <div style={{ textAlign: "right", minWidth: "120px" }}>
                       <span style={{ fontSize: "12px", fontWeight: 700, color: item.isReady ? "#246846" : "var(--muted)" }}>
-                        {item.currentValue || (item.isReady ? "Ready" : "Pending")}
+                        {item.currentValue || (item.isReady ? t("ready") : t("pending"))}
                       </span>
                     </div>
                   </div>
@@ -366,16 +370,16 @@ export default function OnboardingClient({
           <section className="pilot-stack">
             <article className="dashboard-card">
               <h2 style={{ fontSize: "16px", color: "var(--ink)", textTransform: "none", fontWeight: 800 }}>
-                White-Glove Customer & Pet CSV Import
+                {t("importHeading")}
               </h2>
               <p className="dashboard-copy">
-                Import hotel guest lists with automatic duplicate detection and pet-to-owner relationship resolution.
+                {t("importIntro")}
               </p>
 
               <div style={{ marginTop: "16px" }}>
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "8px" }}>
                   <label style={{ fontSize: "12px", fontWeight: 700 }}>
-                    CSV Data (Paste or Load Sample):
+                    {t("importDataLabel")}
                   </label>
                   <button
                     type="button"
@@ -383,7 +387,7 @@ export default function OnboardingClient({
                     style={{ minHeight: "32px", padding: "0 10px", fontSize: "11px" }}
                     onClick={() => setCsvInput(SAMPLE_CSV)}
                   >
-                    Load Sample CSV
+                    {t("loadSample")}
                   </button>
                 </div>
                 <textarea
@@ -402,7 +406,7 @@ export default function OnboardingClient({
                   onClick={handlePreviewCsv}
                   disabled={isPending || !csvInput.trim()}
                 >
-                  {isPending ? "Validating..." : "🔍 Validate & Preview (Zero DB Writes)"}
+                  {isPending ? t("validating") : t("validatePreview")}
                 </button>
                 {preview && preview.validRows > 0 && (
                   <button
@@ -413,10 +417,10 @@ export default function OnboardingClient({
                     disabled={isPending || preview.identityConflicts > 0}
                   >
                     {isPending
-                      ? "Importing..."
+                      ? t("importing")
                       : preview.identityConflicts > 0
-                      ? `⛔ Blocked: ${preview.identityConflicts} Identity Conflict(s)`
-                      : `🚀 Confirm & Import (${preview.validRows} rows)`}
+                      ? t("blockedConflicts", { count: preview.identityConflicts })
+                      : t("confirmImport", { rows: preview.validRows })}
                   </button>
                 )}
               </div>
@@ -426,36 +430,36 @@ export default function OnboardingClient({
             {preview && (
               <article className="dashboard-card">
                 <h2 style={{ fontSize: "16px", color: "var(--ink)", textTransform: "none", fontWeight: 800 }}>
-                  Validation & Diff Preview
+                  {t("previewHeading")}
                 </h2>
                 <div className="dashboard-grid" style={{ marginTop: "14px" }}>
                   <div className="dashboard-stat">
-                    <span>Total Rows</span>
+                    <span>{t("statTotalRows")}</span>
                     <strong>{preview.totalRows}</strong>
                   </div>
                   <div className="dashboard-stat mint">
-                    <span>Valid Rows</span>
+                    <span>{t("statValidRows")}</span>
                     <strong>{preview.validRows}</strong>
                   </div>
                   <div className="dashboard-stat pink">
-                    <span>Invalid / Errors</span>
+                    <span>{t("statInvalidRows")}</span>
                     <strong>{preview.invalidRows}</strong>
                   </div>
                   <div className={`dashboard-stat ${preview.identityConflicts > 0 ? "pink" : "peach"}`}>
-                    <span>Identity Conflicts</span>
+                    <span>{t("statIdentityConflicts")}</span>
                     <strong>{preview.identityConflicts}</strong>
                   </div>
                 </div>
 
                 {preview.identityConflicts > 0 && (
                   <div className="pilot-notice error" style={{ marginTop: "14px" }}>
-                    ⛔ <strong>Blocking Identity Conflicts Detected ({preview.identityConflicts} rows):</strong> A customer phone in the CSV is already registered to a different owner name in this shop. Auto-merge is blocked to prevent data corruption. Please review and update the CSV.
+                    ⛔ <strong>{t("conflictNoticeHeading", { rows: preview.identityConflicts })}</strong> {t("conflictNoticeBody")}
                   </div>
                 )}
 
                 {preview.unsupportedColumns.length > 0 && (
                   <div className="pilot-notice" style={{ background: "#fff9f1", borderColor: "#ffe2c7", color: "#956020", marginTop: "14px" }}>
-                    ℹ️ <strong>Unsupported Columns in CSV (Ignored):</strong> {preview.unsupportedColumns.join(", ")}
+                    ℹ️ <strong>{t("unsupportedColumnsHeading")}</strong> {preview.unsupportedColumns.join(", ")}
                   </div>
                 )}
 
@@ -464,12 +468,12 @@ export default function OnboardingClient({
                   <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "12px", textAlign: "left" }}>
                     <thead>
                       <tr style={{ borderBottom: "2px solid var(--line)", color: "var(--muted)" }}>
-                        <th style={{ padding: "8px" }}>Row</th>
-                        <th style={{ padding: "8px" }}>Customer Name</th>
-                        <th style={{ padding: "8px" }}>Phone</th>
-                        <th style={{ padding: "8px" }}>Pet Name</th>
-                        <th style={{ padding: "8px" }}>Species / Breed</th>
-                        <th style={{ padding: "8px" }}>Status</th>
+                        <th style={{ padding: "8px" }}>{t("thRow")}</th>
+                        <th style={{ padding: "8px" }}>{t("thCustomerName")}</th>
+                        <th style={{ padding: "8px" }}>{t("thPhone")}</th>
+                        <th style={{ padding: "8px" }}>{t("thPetName")}</th>
+                        <th style={{ padding: "8px" }}>{t("thSpeciesBreed")}</th>
+                        <th style={{ padding: "8px" }}>{t("thStatus")}</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -485,22 +489,22 @@ export default function OnboardingClient({
                           <td style={{ padding: "8px" }}>
                             {row.isIdentityConflict ? (
                               <span className="status-chip chip-maintenance" style={{ color: "#9b3f59", background: "#fff0f4", fontWeight: 700 }}>
-                                ⛔ CONFLICT: {row.errors.join(", ")}
+                                {t("chipConflict", { errors: row.errors.join(", ") })}
                               </span>
                             ) : row.isValid ? (
                               <div style={{ display: "flex", gap: "4px", flexWrap: "wrap" }}>
-                                <span className="status-chip chip-available">✓ VALID</span>
+                                <span className="status-chip chip-available">{t("chipValid")}</span>
                                 {row.isCustomerNew ? (
-                                  <span className="status-chip chip-occupied">+ NEW CUSTOMER</span>
+                                  <span className="status-chip chip-occupied">{t("chipNewCustomer")}</span>
                                 ) : (
-                                  <span className="status-chip chip-maintenance">MATCHED CUSTOMER</span>
+                                  <span className="status-chip chip-maintenance">{t("chipMatchedCustomer")}</span>
                                 )}
-                                {row.isPetNew && <span className="status-chip chip-occupied">+ NEW PET</span>}
-                                {row.isDuplicatePet && <span className="status-chip chip-cleaning">SKIP DUPLICATE PET</span>}
+                                {row.isPetNew && <span className="status-chip chip-occupied">{t("chipNewPet")}</span>}
+                                {row.isDuplicatePet && <span className="status-chip chip-cleaning">{t("chipSkipDuplicatePet")}</span>}
                               </div>
                             ) : (
                               <span className="status-chip chip-maintenance" style={{ color: "#9b3f59", background: "#fff0f4" }}>
-                                ⚠ INVALID: {row.errors.join(", ")}
+                                {t("chipInvalid", { errors: row.errors.join(", ") })}
                               </span>
                             )}
                           </td>
@@ -510,7 +514,7 @@ export default function OnboardingClient({
                   </table>
                   {preview.rowDetails.length > 50 && (
                     <p className="dashboard-copy" style={{ marginTop: "8px" }}>
-                      Showing first 50 rows of {preview.rowDetails.length} total.
+                      {t("showingFirstRows", { shown: 50, total: preview.rowDetails.length })}
                     </p>
                   )}
                 </div>
@@ -523,24 +527,24 @@ export default function OnboardingClient({
                 <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
                   <span style={{ fontSize: "24px" }}>🎉</span>
                   <h2 style={{ fontSize: "16px", color: "#246846", textTransform: "none", fontWeight: 800 }}>
-                    Import Execution Result
+                    {t("importResultHeading")}
                   </h2>
                 </div>
                 <div className="dashboard-grid" style={{ marginTop: "14px" }}>
                   <div className="dashboard-stat mint">
-                    <span>Created Customers</span>
+                    <span>{t("statCreatedCustomers")}</span>
                     <strong>{importResult.createdCustomers}</strong>
                   </div>
                   <div className="dashboard-stat mint">
-                    <span>Created Pets</span>
+                    <span>{t("statCreatedPets")}</span>
                     <strong>{importResult.createdPets}</strong>
                   </div>
                   <div className="dashboard-stat peach">
-                    <span>Skipped Duplicates</span>
+                    <span>{t("statSkippedDuplicates")}</span>
                     <strong>{importResult.skippedDuplicates}</strong>
                   </div>
                   <div className="dashboard-stat">
-                    <span>Total Rows Processed</span>
+                    <span>{t("statTotalProcessed")}</span>
                     <strong>{importResult.totalProcessed}</strong>
                   </div>
                 </div>
@@ -554,22 +558,22 @@ export default function OnboardingClient({
           <section className="pilot-stack">
             <article className="dashboard-card">
               <h2 style={{ fontSize: "16px", color: "var(--ink)", textTransform: "none", fontWeight: 800 }}>
-                Add New Room to Matrix
+                {t("addRoomHeading")}
               </h2>
               <form onSubmit={handleCreateRoom} className="pilot-form" style={{ marginTop: "16px" }}>
                 <div className="pilot-grid-4">
                   <label>
-                    Room Number / Name *
+                    {t("roomNumberLabel")}
                     <input
                       type="text"
-                      placeholder="e.g. A101, VIP-1"
+                      placeholder={t("roomNumberPlaceholder")}
                       value={roomNumber}
                       onChange={(e) => setRoomNumber(e.target.value)}
                       required
                     />
                   </label>
                   <label>
-                    Room Type *
+                    {t("roomTypeLabel")}
                     <select value={roomType} onChange={(e) => setRoomType(e.target.value as RoomType)}>
                       <option value="standard">Standard</option>
                       <option value="deluxe">Deluxe</option>
@@ -578,7 +582,7 @@ export default function OnboardingClient({
                     </select>
                   </label>
                   <label>
-                    Capacity (Pets) *
+                    {t("capacityLabel")}
                     <input
                       type="number"
                       min={1}
@@ -589,7 +593,7 @@ export default function OnboardingClient({
                     />
                   </label>
                   <label>
-                    Base Price / Night (THB) *
+                    {t("basePriceLabel")}
                     <input
                       type="number"
                       min={0}
@@ -600,7 +604,7 @@ export default function OnboardingClient({
                   </label>
                 </div>
                 <button type="submit" className="primary-button" disabled={isPending || !roomNumber.trim()}>
-                  {isPending ? "Creating..." : "+ Add Room"}
+                  {isPending ? t("creating") : t("addRoomButton")}
                 </button>
               </form>
             </article>
@@ -608,7 +612,7 @@ export default function OnboardingClient({
             {/* Room Matrix List */}
             <article className="dashboard-card">
               <h2 style={{ fontSize: "16px", color: "var(--ink)", textTransform: "none", fontWeight: 800 }}>
-                Existing Room Inventory ({operations.rooms.length} rooms)
+                {t("roomInventoryHeading")} ({t("roomInventorySummary", { count: operations.rooms.length })})
               </h2>
               <div className="room-grid" style={{ marginTop: "14px" }}>
                 {operations.rooms.map((room) => (
@@ -616,12 +620,12 @@ export default function OnboardingClient({
                     <div className="room-top">
                       <div>
                         <span className="room-number">{room.number}</span>
-                        <div className="room-type">{room.type.toUpperCase()} · Max {room.capacity} pet(s)</div>
+                        <div className="room-type">{t("roomTypeCapacity", { type: room.type.toUpperCase(), capacity: room.capacity })}</div>
                       </div>
                       <span className={`status-chip chip-${room.status}`}>{room.status.toUpperCase()}</span>
                     </div>
                     <div style={{ marginTop: "12px", fontSize: "13px", fontWeight: 700, color: "var(--deep)" }}>
-                      ฿{room.price.toLocaleString()} / night
+                      {t("pricePerNight", { price: room.price.toLocaleString() })}
                     </div>
                   </div>
                 ))}
@@ -635,49 +639,49 @@ export default function OnboardingClient({
           <section className="pilot-stack">
             <article className="dashboard-card">
               <h2 style={{ fontSize: "16px", color: "var(--ink)", textTransform: "none", fontWeight: 800 }}>
-                Invite Staff Member
+                {t("inviteStaffHeading")}
               </h2>
               <form onSubmit={handleInviteStaff} className="pilot-form" style={{ marginTop: "16px" }}>
                 <div className="pilot-grid-4">
                   <label>
-                    Email Address *
+                    {t("staffEmailLabel")}
                     <input
                       type="email"
-                      placeholder="staff@petcare.com"
+                      placeholder={t("staffEmailPlaceholder")}
                       value={staffEmail}
                       onChange={(e) => setStaffEmail(e.target.value)}
                       required
                     />
                   </label>
                   <label>
-                    Full Name *
+                    {t("staffNameLabel")}
                     <input
                       type="text"
-                      placeholder="Somying Narak"
+                      placeholder={t("staffNamePlaceholder")}
                       value={staffName}
                       onChange={(e) => setStaffName(e.target.value)}
                       required
                     />
                   </label>
                   <label>
-                    Role *
+                    {t("staffRoleLabel")}
                     <select value={staffRole} onChange={(e) => setStaffRole(e.target.value as "manager" | "staff")}>
-                      <option value="staff">Staff (Daily Care & Operations)</option>
-                      <option value="manager">Manager (Rooms & Guest Management)</option>
+                      <option value="staff">{t("staffRoleStaff")}</option>
+                      <option value="manager">{t("staffRoleManager")}</option>
                     </select>
                   </label>
                   <label>
-                    Initial Password (Optional)
+                    {t("staffPasswordLabel")}
                     <input
                       type="password"
-                      placeholder="Leave blank to send email invite"
+                      placeholder={t("staffPasswordPlaceholder")}
                       value={staffPassword}
                       onChange={(e) => setStaffPassword(e.target.value)}
                     />
                   </label>
                 </div>
                 <button type="submit" className="primary-button" disabled={isPending || !staffEmail.trim() || !staffName.trim()}>
-                  {isPending ? "Inviting..." : "✉️ Invite Staff Member"}
+                  {isPending ? t("inviting") : t("inviteStaffButton")}
                 </button>
               </form>
             </article>
@@ -685,17 +689,17 @@ export default function OnboardingClient({
             {/* Active Staff List */}
             <article className="dashboard-card">
               <h2 style={{ fontSize: "16px", color: "var(--ink)", textTransform: "none", fontWeight: 800 }}>
-                Active Team Members ({operations.staffMembers.length} members)
+                {t("activeTeamHeading")} ({t("activeTeamSummary", { count: operations.staffMembers.length })})
               </h2>
               <div className="pilot-list compact">
                 {operations.staffMembers.map((member) => (
                   <div key={member.id} className="pilot-staff-row">
                     <div>
                       <strong>{member.name}</strong> ({member.email})
-                      <div className="dashboard-copy">Role: {member.role.toUpperCase()}</div>
+                      <div className="dashboard-copy">{t("rolePrefix")} {member.role.toUpperCase()}</div>
                     </div>
                     <span className="status-chip chip-available">
-                      {member.isActive ? "ACTIVE" : "DISABLED"}
+                      {member.isActive ? t("statusActive") : t("statusDisabled")}
                     </span>
                   </div>
                 ))}
@@ -709,12 +713,12 @@ export default function OnboardingClient({
           <section className="pilot-stack">
             <article className="dashboard-card">
               <h2 style={{ fontSize: "16px", color: "var(--ink)", textTransform: "none", fontWeight: 800 }}>
-                Shop Identity & Contact Settings
+                {t("profileHeading")}
               </h2>
               <form onSubmit={handleUpdateProfile} className="pilot-form" style={{ marginTop: "16px" }}>
                 <div className="pilot-grid-2">
                   <label>
-                    Shop Name *
+                    {t("shopNameLabel")}
                     <input
                       type="text"
                       value={shopName}
@@ -723,11 +727,11 @@ export default function OnboardingClient({
                     />
                   </label>
                   <label>
-                    Shop Slug (URL identifier)
+                    {t("shopSlugLabel")}
                     <input type="text" value={operations.shop.slug} disabled style={{ opacity: 0.6 }} />
                   </label>
                   <label>
-                    Contact Phone Number
+                    {t("shopPhoneLabel")}
                     <input
                       type="text"
                       placeholder="02-123-4567"
@@ -736,7 +740,7 @@ export default function OnboardingClient({
                     />
                   </label>
                   <label>
-                    LINE Official Account ID (@id)
+                    {t("lineOaLabel")}
                     <input
                       type="text"
                       placeholder="@yourhotel"
@@ -746,7 +750,7 @@ export default function OnboardingClient({
                   </label>
                 </div>
                 <button type="submit" className="primary-button" disabled={isPending || !shopName.trim()}>
-                  {isPending ? "Saving..." : "💾 Save Profile Settings"}
+                  {isPending ? t("saving") : t("saveProfileButton")}
                 </button>
               </form>
             </article>

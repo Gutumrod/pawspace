@@ -1,12 +1,22 @@
 import type { Metadata } from "next";
+import { cookies } from "next/headers";
 import { getSupabaseAdminClient } from "@/lib/supabase-admin";
+import { localeCookieName, resolveLocale } from "@/app/i18n/config";
+import { getServerTranslator } from "@/app/i18n/server-translator";
+import { LanguageToggle } from "@/app/components/language-toggle";
 import { LineBookingClient } from "./LineBookingClient";
 
-export const metadata: Metadata = {
-  title: "จองห้องพัก | PawSpace",
-  referrer: "no-referrer",
-  robots: { index: false, follow: false },
-};
+export async function generateMetadata(): Promise<Metadata> {
+  const cookieStore = await cookies();
+  const locale = resolveLocale(cookieStore.get(localeCookieName)?.value);
+  const { t } = getServerTranslator(locale, "line");
+
+  return {
+    title: t("bookingMetaTitle"),
+    referrer: "no-referrer",
+    robots: { index: false, follow: false },
+  };
+}
 
 type PageProps = {
   searchParams: Promise<{ shop?: string; shop_id?: string }>;
@@ -35,6 +45,10 @@ export default async function LineBookingPage({ searchParams }: PageProps) {
   const shopId = await resolveShopId(shopParam);
   const liffId = process.env.NEXT_PUBLIC_LINE_LIFF_ID || "";
 
+  const cookieStore = await cookies();
+  const locale = resolveLocale(cookieStore.get(localeCookieName)?.value);
+  const { t } = getServerTranslator(locale, "line");
+
   return (
     <main className="liff-shell">
       <div className="liff-container">
@@ -46,12 +60,15 @@ export default async function LineBookingPage({ searchParams }: PageProps) {
               </div>
               <div>
                 <h1 className="liff-brand-title">PawSpace</h1>
-                <p className="liff-brand-subtitle">ระบบจองห้องพักสัตว์เลี้ยง</p>
+                <p className="liff-brand-subtitle">{t("brandSubtitle")}</p>
               </div>
             </div>
-            <span className="liff-badge">
-              <span>✦</span> LINE Booking
-            </span>
+            <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+              <LanguageToggle />
+              <span className="liff-badge">
+                <span>✦</span> {t("bookingBadge")}
+              </span>
+            </div>
           </header>
 
           <LineBookingClient shopId={shopId} liffId={liffId} />

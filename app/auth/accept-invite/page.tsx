@@ -2,12 +2,15 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import { useTranslations } from "next-intl";
 import { getSupabaseBrowserClient } from "@/lib/supabase-browser";
 
 type LinkState = "checking" | "ready" | "invalid";
 
 export default function AcceptInvitePage() {
   const router = useRouter();
+  const t = useTranslations("invite");
+  const tCommon = useTranslations("common");
   const [linkState, setLinkState] = useState<LinkState>("checking");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
@@ -45,11 +48,11 @@ export default function AcceptInvitePage() {
     setError(null);
 
     if (password.length < 8) {
-      setError("รหัสผ่านต้องมีอย่างน้อย 8 ตัวอักษร");
+      setError(t("errorTooShort"));
       return;
     }
     if (password !== confirmPassword) {
-      setError("รหัสผ่านทั้งสองช่องไม่ตรงกัน");
+      setError(t("errorMismatch"));
       return;
     }
 
@@ -58,7 +61,7 @@ export default function AcceptInvitePage() {
       const supabase = getSupabaseBrowserClient();
       const { error: updateError } = await supabase.auth.updateUser({ password });
       if (updateError) {
-        setError(updateError.message || "ตั้งรหัสผ่านไม่สำเร็จ");
+        setError(updateError.message || t("errorUpdateFailed"));
         return;
       }
       // This page only consumes the invite link; the app's real session is the
@@ -66,7 +69,7 @@ export default function AcceptInvitePage() {
       await supabase.auth.signOut();
       router.push("/login?invited=1");
     } catch {
-      setError("เกิดข้อผิดพลาดในการเชื่อมต่อ กรุณาลองใหม่อีกครั้ง");
+      setError(tCommon("connectionError"));
     } finally {
       setSubmitting(false);
     }
@@ -81,19 +84,19 @@ export default function AcceptInvitePage() {
           </div>
           <div>
             <h1 className="text-xl font-bold text-[var(--ink)] tracking-tight">PawSpace</h1>
-            <p className="text-xs text-[var(--muted)]">ตั้งรหัสผ่านสำหรับพนักงานใหม่</p>
+            <p className="text-xs text-[var(--muted)]">{t("caption")}</p>
           </div>
         </div>
 
         {linkState === "checking" && (
           <p data-testid="accept-invite-checking" className="text-sm text-[var(--muted)]">
-            กำลังตรวจสอบลิงก์คำเชิญ...
+            {t("checking")}
           </p>
         )}
 
         {linkState === "invalid" && (
           <p data-testid="accept-invite-invalid" className="text-sm text-red-700">
-            ลิงก์คำเชิญไม่ถูกต้องหรือหมดอายุแล้ว กรุณาขอคำเชิญใหม่จากเจ้าของร้าน
+            {t("invalidLink")}
           </p>
         )}
 
@@ -106,7 +109,7 @@ export default function AcceptInvitePage() {
             )}
             <div>
               <label className="block text-xs font-semibold text-[var(--ink)] mb-1.5" htmlFor="password">
-                รหัสผ่านใหม่
+                {t("passwordLabel")}
               </label>
               <input
                 id="password"
@@ -120,7 +123,7 @@ export default function AcceptInvitePage() {
             </div>
             <div>
               <label className="block text-xs font-semibold text-[var(--ink)] mb-1.5" htmlFor="confirmPassword">
-                ยืนยันรหัสผ่าน
+                {t("confirmPasswordLabel")}
               </label>
               <input
                 id="confirmPassword"
@@ -137,7 +140,7 @@ export default function AcceptInvitePage() {
               disabled={submitting}
               className="w-full mt-2 bg-[var(--deep)] hover:bg-[#236153] text-white font-semibold py-2.5 px-4 rounded-xl text-sm transition duration-150 disabled:opacity-50"
             >
-              {submitting ? "กำลังบันทึก..." : "ตั้งรหัสผ่านและเข้าสู่ระบบ"}
+              {submitting ? t("submitting") : t("submit")}
             </button>
           </form>
         )}

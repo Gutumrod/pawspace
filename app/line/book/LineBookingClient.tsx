@@ -2,6 +2,7 @@
 
 import Script from "next/script";
 import { useMemo, useRef, useState } from "react";
+import { useLocale, useTranslations } from "next-intl";
 import {
   calculateEstimatedTotal,
   isRoomAvailable,
@@ -11,6 +12,8 @@ import {
   type CustomerBookingRoom,
 } from "@/lib/line-booking-core";
 import { getCustomerBookingContextAction, submitBookingRequestAction } from "@/app/actions/line-booking";
+import { getMessages } from "@/app/i18n/messages";
+import type { Locale } from "@/app/i18n/config";
 
 type Props = {
   shopId: string;
@@ -39,6 +42,14 @@ export function LineBookingClient({ shopId, liffId }: Props) {
   const [context, setContext] = useState<CustomerBookingContext | null>(null);
   const [idToken, setIdToken] = useState<string>("");
 
+  const t = useTranslations("lineBooking");
+  const locale = useLocale() as Locale;
+
+  // Catalogue values read outside the hook API: the pet-species fallback labels and the
+  // server-error code constant. Both stay locale-driven off the same catalogue as `t`.
+  const speciesLabels = getMessages(locale).species;
+  const serverUnavailableText = getMessages(locale).lineBooking.serverUnavailable;
+
   // Form State
   const [selectedPetIds, setSelectedPetIds] = useState<string[]>([]);
   const [selectedRoomId, setSelectedRoomId] = useState<string>("");
@@ -56,6 +67,15 @@ export function LineBookingClient({ shopId, liffId }: Props) {
   const [submittedRequestId, setSubmittedRequestId] = useState<string>("");
   const [submitError, setSubmitError] = useState<string>("");
 
+  /** Maps the booking-core date validation error (a fixed English code) to its translated
+   * phrasing. The core module is locale-free by design, so the mapping lives here. */
+  function dateErrorText(error: string | undefined): string {
+    if (!error) return "";
+    if (error === "Check-out date must be strictly after check-in date.") return t("dateErrorOrder");
+    if (error === "Dates must be valid calendar dates.") return t("dateErrorInvalid");
+    return t("dateErrorFormat");
+  }
+
   async function initializeLiff() {
     if (started.current) return;
     started.current = true;
@@ -63,13 +83,13 @@ export function LineBookingClient({ shopId, liffId }: Props) {
 
     if (!shopId) {
       setState("error");
-      setErrorMessage("ไม่พบรหัสร้านค้า กรุณาเปิดลิงก์จาก LINE Official Account ของร้าน");
+      setErrorMessage(t("errorMissingShop"));
       return;
     }
 
     if (!liffId || !window.liff) {
       setState("error");
-      setErrorMessage("ระบบ LINE LIFF ยังไม่ได้ตั้งค่า กรุณาติดต่อทางร้าน");
+      setErrorMessage(t("errorLiffNotConfigured"));
       return;
     }
 
@@ -83,7 +103,7 @@ export function LineBookingClient({ shopId, liffId }: Props) {
       const token = window.liff.getIDToken();
       if (!token) {
         setState("error");
-        setErrorMessage("ไม่สามารถอ่าน LINE ID token ได้ กรุณาเปิดลิงก์ใหม่จากแอป LINE");
+        setErrorMessage(t("errorNoIdToken"));
         return;
       }
       setIdToken(token);
@@ -92,9 +112,9 @@ export function LineBookingClient({ shopId, liffId }: Props) {
       if (!result.success) {
         setState("error");
         if (result.code === "NOT_LINKED") {
-          setErrorMessage("ยังไม่ได้เชื่อมต่อบัญชี LINE กับร้านนี้ กรุณากดลิงก์เชื่อมต่อ LINE ที่ร้านส่งให้ก่อนครับ");
+          setErrorMessage(t("errorNotLinked"));
         } else {
-          setErrorMessage(result.error || "เกิดข้อผิดพลาดในการโหลดข้อมูลร้านค้า");
+          setErrorMessage(result.error || t("errorLoadContext"));
         }
         return;
       }
@@ -109,7 +129,7 @@ export function LineBookingClient({ shopId, liffId }: Props) {
       setState("ready");
     } catch {
       setState("error");
-      setErrorMessage("เกิดข้อผิดพลาดในการเชื่อมต่อ LINE LIFF กรุณาลองใหม่อีกครั้ง");
+      setErrorMessage(t("errorLiffConnect"));
     }
   }
 
@@ -168,7 +188,11 @@ export function LineBookingClient({ shopId, liffId }: Props) {
 
       if (!response.success) {
         setState("ready");
-        setSubmitError(response.error || "ไม่สามารถส่งคำขอจองได้ กรุณาลองใหม่อีกครั้ง");
+        const failureText =
+          response.error === "Server unavailable. Please try again."
+            ? serverUnavailableText
+            : response.error || t("submitError");
+        setSubmitError(failureText);
         return;
       }
 
@@ -176,7 +200,7 @@ export function LineBookingClient({ shopId, liffId }: Props) {
       setState("success");
     } catch {
       setState("ready");
-      setSubmitError("เกิดข้อผิดพลาดในการส่งคำขอ กรุณาลองใหม่อีกครั้ง");
+      setSubmitError(t("submitConnectionError"));
     }
   }
 
@@ -188,7 +212,7 @@ export function LineBookingClient({ shopId, liffId }: Props) {
         onReady={() => void initializeLiff()}
         onError={() => {
           setState("error");
-          setErrorMessage("โหลด LINE LIFF SDK ไม่สำเร็จ กรุณาลองใหม่อีกครั้ง");
+          setErrorMessage(t("errorSdkLoad"));
         }}
       />
 
@@ -204,10 +228,10 @@ export function LineBookingClient({ shopId, liffId }: Props) {
           <div
             className="inline-block h-8 w-8 animate-spin rounded-full border-3 border-[var(--deep)] border-t-transparent mb-3"
             role="status"
-            aria-label="กำลังโหลด"
+            aria-label={t("loadingAria")}
           />
           <p style={{ fontWeight: 700, color: "var(--ink)", margin: 0, fontSize: "14px" }}>
-            กำลังเตรียมข้อมูลการจองผ่าน LINE…
+            {t("loading")}
           </p>
         </div>
       )}
@@ -217,7 +241,7 @@ export function LineBookingClient({ shopId, liffId }: Props) {
           <div style={{ fontSize: "26px", marginBottom: "8px" }} aria-hidden="true">
             ⚠️
           </div>
-          <h2 style={{ fontSize: "15px", fontWeight: 700, margin: "0 0 6px" }}>ไม่สามารถเปิดหน้าจองได้</h2>
+          <h2 style={{ fontSize: "15px", fontWeight: 700, margin: "0 0 6px" }}>{t("errorHeading")}</h2>
           <p style={{ fontSize: "13px", margin: 0, opacity: 0.9 }}>{errorMessage}</p>
         </div>
       )}
@@ -236,40 +260,44 @@ export function LineBookingClient({ shopId, liffId }: Props) {
               letterSpacing: "-0.03em",
             }}
           >
-            ส่งคำขอจองสำเร็จแล้ว!
+            {t("successHeading")}
           </h2>
           <p style={{ fontSize: "13px", color: "var(--muted)", margin: "0 0 16px", lineHeight: 1.5 }}>
-            คำขอจองห้องพักสำหรับร้าน <strong style={{ color: "var(--ink)" }}>{context.shop.name}</strong>{" "}
-            ถูกส่งเข้าระบบเรียบร้อยแล้ว
+            {t("successBodyPrefix")} <strong style={{ color: "var(--ink)" }}>{context.shop.name}</strong>{" "}
+            {t("successBodySuffix")}
           </p>
 
           <div className="liff-success-detail">
             <div className="liff-success-row">
-              <span style={{ color: "var(--muted)" }}>รหัสคำขอ:</span>
+              <span style={{ color: "var(--muted)" }}>{t("requestIdLabel")}</span>
               <span style={{ fontFamily: "monospace", fontSize: "12px", color: "var(--ink)", fontWeight: 700 }}>
                 {submittedRequestId.slice(0, 8)}
               </span>
             </div>
             <div className="liff-success-row">
-              <span style={{ color: "var(--muted)" }}>ห้องพัก:</span>
+              <span style={{ color: "var(--muted)" }}>{t("roomLabel")}</span>
               <span style={{ fontWeight: 600, color: "var(--ink)" }}>
                 {selectedRoom?.roomNumber} ({selectedRoom?.roomType})
               </span>
             </div>
             <div className="liff-success-row">
-              <span style={{ color: "var(--muted)" }}>วันที่เข้าพัก:</span>
+              <span style={{ color: "var(--muted)" }}>{t("datesLabel")}</span>
               <span style={{ fontWeight: 600, color: "var(--ink)" }}>
-                {checkInDate} ถึง {checkOutDate} ({dateValidation.nights} คืน)
+                {t("datesValue", {
+                  checkIn: checkInDate,
+                  checkOut: checkOutDate,
+                  nights: dateValidation.nights,
+                })}
               </span>
             </div>
             <div className="liff-success-row">
-              <span style={{ color: "var(--muted)" }}>สัตว์เลี้ยง:</span>
+              <span style={{ color: "var(--muted)" }}>{t("petLabel")}</span>
               <span style={{ fontWeight: 600, color: "var(--ink)" }}>
                 {context.pets.filter((p) => selectedPetIds.includes(p.id)).map((p) => p.name).join(", ")}
               </span>
             </div>
             <div className="liff-success-row" style={{ paddingTop: "8px", borderTop: "1px solid var(--line)" }}>
-              <span style={{ fontWeight: 600, color: "var(--ink)" }}>ยอดประเมิน:</span>
+              <span style={{ fontWeight: 600, color: "var(--ink)" }}>{t("estimatedTotalLabel")}</span>
               <span style={{ fontSize: "18px", fontWeight: 800, color: "var(--deep)" }}>
                 ฿{totalEstimatedPrice.toLocaleString()}
               </span>
@@ -277,7 +305,7 @@ export function LineBookingClient({ shopId, liffId }: Props) {
           </div>
 
           <div className="pilot-notice ok" style={{ textAlign: "left", margin: 0 }}>
-            ℹ️ เจ้าหน้าที่ของร้านจะตรวจสอบคิวห้องพักและติดต่อยืนยันรายละเอียดผ่านทาง LINE อีกครั้งครับ
+            {t("successNotice")}
           </div>
         </div>
       )}
@@ -286,17 +314,17 @@ export function LineBookingClient({ shopId, liffId }: Props) {
         <form onSubmit={handleSubmit} style={{ display: "grid", gap: "20px" }}>
           {/* Shop & Customer Banner */}
           <div className="liff-banner">
-            <div className="liff-banner-eyebrow">จองห้องพักกับ</div>
+            <div className="liff-banner-eyebrow">{t("bannerEyebrow")}</div>
             <div className="liff-banner-title">{context.shop.name}</div>
             <div className="liff-banner-user">
-              ผู้จอง: <strong style={{ color: "var(--ink)" }}>{context.owner.firstName}</strong> ({context.owner.phone})
+              {t("bannerBooker")} <strong style={{ color: "var(--ink)" }}>{context.owner.firstName}</strong> ({context.owner.phone})
             </div>
           </div>
 
           {/* Step 1: Select Pets */}
           <div>
             <label className="liff-section-title">
-              1. เลือกสัตว์เลี้ยงที่เข้าพัก <span className="liff-section-required">*</span>
+              {t("stepPets")} <span className="liff-section-required">{t("requiredMark")}</span>
             </label>
             {context.pets.length === 0 ? (
               <div
@@ -304,7 +332,7 @@ export function LineBookingClient({ shopId, liffId }: Props) {
                 style={{ display: "flex", alignItems: "center", gap: "8px", margin: 0 }}
               >
                 <span aria-hidden="true">⚠️</span>
-                <span>ยังไม่มีข้อมูลสัตว์เลี้ยงในระบบ กรุณาติดต่อทางร้านเพื่อเพิ่มข้อมูล</span>
+                <span>{t("noPets")}</span>
               </div>
             ) : (
               <div className="liff-pet-grid">
@@ -330,7 +358,7 @@ export function LineBookingClient({ shopId, liffId }: Props) {
                           className="liff-pet-breed"
                           style={{ whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}
                         >
-                          {pet.breed || (pet.species === "cat" ? "แมว" : "สุนัข")}
+                          {pet.breed || speciesLabels[pet.species]}
                         </div>
                       </div>
                       {selected && (
@@ -346,7 +374,7 @@ export function LineBookingClient({ shopId, liffId }: Props) {
           {/* Step 2: Select Room */}
           <div>
             <label className="liff-section-title">
-              2. เลือกประเภทห้องพัก <span className="liff-section-required">*</span>
+              {t("stepRooms")} <span className="liff-section-required">{t("requiredMark")}</span>
             </label>
             <div className="liff-room-list">
               {context.rooms.map((room: CustomerBookingRoom) => {
@@ -369,10 +397,10 @@ export function LineBookingClient({ shopId, liffId }: Props) {
                         <span className="status-chip chip-available">{room.roomType}</span>
                       </div>
                       <div style={{ fontSize: "11px", color: "var(--muted)", marginTop: "4px" }}>
-                        รองรับสูงสุด {room.capacityPets} ตัว{" "}
+                        {t("roomCapacity", { capacity: room.capacityPets })}{" "}
                         {!fitsPets && (
                           <span style={{ color: "var(--coral)", fontWeight: 600 }}>
-                            (ความจุไม่พอสำหรับ {selectedPetIds.length} ตัว)
+                            {t("roomCapacityShort", { count: selectedPetIds.length })}
                           </span>
                         )}
                       </div>
@@ -390,7 +418,7 @@ export function LineBookingClient({ shopId, liffId }: Props) {
                         <div style={{ fontSize: "16px", fontWeight: 800, color: "var(--deep)" }}>
                           ฿{room.basePricePerNight.toLocaleString()}
                         </div>
-                        <div style={{ fontSize: "11px", color: "var(--muted)" }}>/ คืน</div>
+                        <div style={{ fontSize: "11px", color: "var(--muted)" }}>{t("pricePerNight")}</div>
                       </div>
                       {selected && (
                         <span
@@ -410,7 +438,7 @@ export function LineBookingClient({ shopId, liffId }: Props) {
           {/* Step 3: Dates */}
           <div>
             <label className="liff-section-title">
-              3. วันที่เข้าพัก <span className="liff-section-required">*</span>
+              {t("stepDates")} <span className="liff-section-required">{t("requiredMark")}</span>
             </label>
             <div style={{ display: "grid", gridTemplateColumns: "repeat(2, minmax(0, 1fr))", gap: "10px" }}>
               <div>
@@ -423,7 +451,7 @@ export function LineBookingClient({ shopId, liffId }: Props) {
                     fontWeight: 500,
                   }}
                 >
-                  วันเช็คอิน
+                  {t("checkInLabel")}
                 </span>
                 <input
                   type="date"
@@ -443,7 +471,7 @@ export function LineBookingClient({ shopId, liffId }: Props) {
                     fontWeight: 500,
                   }}
                 >
-                  วันเช็คเอาท์
+                  {t("checkOutLabel")}
                 </span>
                 <input
                   type="date"
@@ -467,7 +495,7 @@ export function LineBookingClient({ shopId, liffId }: Props) {
                 }}
               >
                 <span aria-hidden="true">⚠️</span>
-                <span>{dateValidation.error}</span>
+                <span>{dateErrorText(dateValidation.error)}</span>
               </div>
             )}
 
@@ -484,19 +512,19 @@ export function LineBookingClient({ shopId, liffId }: Props) {
                 }}
               >
                 <span aria-hidden="true">⚠️</span>
-                <span>ห้องพักนี้มีผู้จองแล้วในช่วงเวลาดังกล่าว กรุณาเลือกห้องอื่นหรือเปลี่ยนวัน</span>
+                <span>{t("roomUnavailable")}</span>
               </div>
             )}
           </div>
 
           {/* Step 4: Special Requests */}
           <div>
-            <label className="liff-section-title">4. ข้อความหรือคำขอพิเศษเพิ่มเติม (ถ้ามี)</label>
+            <label className="liff-section-title">{t("stepRequests")}</label>
             <textarea
               rows={2}
               value={specialRequests}
               onChange={(e) => setSpecialRequests(e.target.value)}
-              placeholder="เช่น อาหารเฉพาะทาง, เวลาที่จะเข้ามาส่งน้อง..."
+              placeholder={t("requestsPlaceholder")}
               className="liff-input"
               style={{ minHeight: "80px", resize: "vertical" }}
             />
@@ -507,17 +535,17 @@ export function LineBookingClient({ shopId, liffId }: Props) {
             <div className="liff-summary-card">
               <div>
                 <div style={{ fontSize: "11px", color: "var(--muted)", fontWeight: 500 }}>
-                  จำนวน {dateValidation.nights} คืน ({selectedPetIds.length} ตัว)
+                  {t("summaryTitle", { nights: dateValidation.nights, pets: selectedPetIds.length })}
                 </div>
                 <div style={{ fontSize: "14px", fontWeight: 700, color: "var(--ink)", marginTop: "2px" }}>
-                  ยอดประเมินรวม
+                  {t("summaryTotal")}
                 </div>
               </div>
               <div style={{ textAlign: "right" }}>
                 <div style={{ fontSize: "20px", fontWeight: 800, color: "var(--deep)" }}>
                   ฿{totalEstimatedPrice.toLocaleString()}
                 </div>
-                <div style={{ fontSize: "10px", color: "var(--muted)" }}>ยังไม่รวมค่าบริการพิเศษ</div>
+                <div style={{ fontSize: "10px", color: "var(--muted)" }}>{t("summaryNote")}</div>
               </div>
             </div>
           )}
@@ -545,7 +573,7 @@ export function LineBookingClient({ shopId, liffId }: Props) {
             }
             className="primary-button liff-submit-btn"
           >
-            {state === "submitting" ? "กำลังส่งคำขอจอง…" : "ส่งคำขอจองห้องพัก"}
+            {state === "submitting" ? t("submitting") : t("submit")}
           </button>
         </form>
       )}

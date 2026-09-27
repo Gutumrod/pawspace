@@ -91,6 +91,10 @@ export async function runLineDispatcherBatch(maxJobs = 10): Promise<LineDispatch
       continue;
     }
 
+    // No locale is passed on purpose: this batch dispatcher runs from the worker/route with no
+    // request or cookie context, and there is no stored recipient-locale source (the database
+    // has no locale column and adding one is out of scope for this wave). The Thai default in
+    // `sendLineDailyReport` therefore applies, preserving the existing behaviour.
     const result = await sendLineDailyReport(job, channelAccessToken);
     if (result.accepted) {
       await markSent(job.reportId, job.retryKey);

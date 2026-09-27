@@ -1,5 +1,30 @@
+import { defaultLocale, isLocale, type Locale } from "../app/i18n/config";
+import { getMessages } from "../app/i18n/messages";
+
 const LINE_PUSH_URL = "https://api.line.me/v2/bot/message/push";
 const LINE_TIMEOUT_MS = 8_000;
+
+/**
+ * The `lineReport` namespace of messages/{locale}.json.
+ *
+ * This module builds Thai LINE text on the server and cannot read a browser cookie; the
+ * database has no locale column for the pet owner. The locale is therefore an explicit
+ * optional parameter on every builder below, defaulting to `'th'` so existing callers keep
+ * their current behaviour. Callers that hold a real locale (a request/cookie context inside
+ * an app/ route or server action) should pass it.
+ */
+function reportCatalog(locale: unknown) {
+  const resolved: Locale = isLocale(locale) ? locale : defaultLocale;
+  return getMessages(resolved).lineReport;
+}
+
+/** Fills `{name}` placeholders in a catalogue string, leaving unknown ones untouched. */
+function fill(template: string, values: Record<string, string | number>) {
+  return template.replace(/\{(\w+)\}/g, (match, key: string) =>
+    Object.prototype.hasOwnProperty.call(values, key) ? String(values[key]) : match,
+  );
+}
+
 
 export type LineDeliveryJob = {
   reportId: string;
@@ -20,24 +45,32 @@ export type LinePushResult =
   | { accepted: true; status: 200 | 409 }
   | { accepted: false; status?: number; retryable: boolean; error: string };
 
-const LABELS: Record<string, string> = {
-  finished: "กินหมด", half: "กินครึ่งหนึ่ง", little: "กินน้อย", refused: "ไม่กิน",
-  normal: "ปกติ", diarrhea: "ท้องเสีย", none: "ยังไม่ขับถ่าย",
-  happy: "อารมณ์ดี", calm: "สงบ", stressed: "เครียด",
-};
-function textLine(label: string, value: string) {
+type ReportCatalog = ReturnType<typeof reportCatalog>;
+
+/** Status enum -> label, selected from the caller-supplied locale's catalogue. */
+function statusLabel(catalog: ReportCatalog, value: string) {
+  const labels: Record<string, string | undefined> = {
+    ...catalog.foodStatus,
+    ...catalog.excretionStatus,
+    ...catalog.moodStatus,
+  };
+  return labels[value] ?? value;
+}
+
+function textLine(catalog: ReportCatalog, label: string, value: string) {
   return {
     type: "box",
     layout: "horizontal",
     contents: [
       { type: "text", text: label, size: "sm", color: "#666666", flex: 3 },
-      { type: "text", text: LABELS[value] ?? value, size: "sm", wrap: true, flex: 5 },
+      { type: "text", text: statusLabel(catalog, value), size: "sm", wrap: true, flex: 5 },
     ],
     margin: "md",
   };
 }
 
-export function buildDailyReportFlexMessage(job: LineDeliveryJob) {
+export function buildDailyReportFlexMessage(job: LineDeliveryJob, locale: Locale = defaultLocale) {
+  const catalog = reportCatalog(locale);
   const extraImages = job.photoUrls.slice(1).map((url) => ({
     type: "image",
     url,
@@ -48,11 +81,11 @@ export function buildDailyReportFlexMessage(job: LineDeliveryJob) {
   }));
 
   const bodyContents: Record<string, unknown>[] = [
-    { type: "text", text: `อัปเดตจาก PawSpace · ${job.petName}`, weight: "bold", size: "xl", wrap: true },
-    { type: "text", text: `ถึง ${job.ownerName || "เจ้าของน้อง"}`, size: "sm", color: "#777777", margin: "sm" },
-    textLine("อาหาร", job.foodStatus),
-    textLine("ขับถ่าย", job.excretionStatus),
-    textLine("อารมณ์", job.moodStatus),
+    { type: "text", text: fill(catalog.updateTitle, { petName: job.petName }), weight: "bold", size: "xl", wrap: true },
+    { type: "text", text: fill(catalog.ownerLine, { ownerName: job.ownerName || catalog.ownerFallback }), size: "sm", color: "#777777", margin: "sm" },
+    textLine(catalog, catalog.foodLabel, job.foodStatus),
+    textLine(catalog, catalog.excretionLabel, job.excretionStatus),
+    textLine(catalog, catalog.moodLabel, job.moodStatus),
   ];
   if (job.staffNotes?.trim()) {
     bodyContents.push({
@@ -76,7 +109,7 @@ export function buildDailyReportFlexMessage(job: LineDeliveryJob) {
 
   return {
     type: "flex",
-    altText: `อัปเดตจาก PawSpace · ${job.petName}`,
+    altText: fill(catalog.updateTitle, { petName: job.petName }),
     contents: {
       type: "bubble",
       hero: {
@@ -105,6 +138,7 @@ export async function sendLineDailyReport(
   job: LineDeliveryJob,
   channelAccessToken: string,
   fetchImpl: typeof fetch = fetch,
+  locale: Locale = defaultLocale,
 ): Promise<LinePushResult> {
   if (!job.recipientLineUserId || !job.retryKey || job.photoUrls.length < 1) {
     return { accepted: false, retryable: false, error: "LINE delivery job is incomplete." };
@@ -131,7 +165,7 @@ export async function sendLineDailyReport(
       },
       body: JSON.stringify({
         to: job.recipientLineUserId,
-        messages: [buildDailyReportFlexMessage(job)],
+        messages: [buildDailyReportFlexMessage(job, locale)],
       }),
       signal: controller.signal,
       cache: "no-store",

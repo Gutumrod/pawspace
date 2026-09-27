@@ -1,6 +1,9 @@
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
+import { cookies } from 'next/headers';
 import { getDashboardSummary } from '@/lib/dashboard-service';
+import { getServerTranslator } from '@/app/i18n/server-translator';
+import { localeCookieName, resolveLocale } from '@/app/i18n/config';
 
 export const metadata = {
     title: 'PawSpace — Owner & Manager Dashboard',
@@ -15,9 +18,13 @@ export default async function DashboardPage() {
         redirect('/login?error=UnauthorizedDashboardAccess');
     }
 
+    const cookieStore = await cookies();
+    const locale = resolveLocale(cookieStore.get(localeCookieName)?.value);
+    const { t } = getServerTranslator(locale, 'dashboard');
+
     const { shop, staff, rooms, bookings, dailyReports, integrations, entitlement, commercialStatus } = summary;
     const formatDate = (value: string | null) => value
-        ? new Intl.DateTimeFormat('th-TH', { dateStyle: 'medium', timeStyle: 'short', timeZone: 'Asia/Bangkok' }).format(new Date(value))
+        ? new Intl.DateTimeFormat(locale === 'th' ? 'th-TH' : 'en-GB', { dateStyle: 'medium', timeStyle: 'short', timeZone: 'Asia/Bangkok' }).format(new Date(value))
         : '—';
 
     return (
@@ -30,24 +37,24 @@ export default async function DashboardPage() {
                             <h1 className="dashboard-title">{shop.name}</h1>
                             <span className="dashboard-badge">{entitlement.packageName}</span>
                         </div>
-                        <p className="dashboard-copy">Tenant Dashboard · Signed in as <strong>{staff.name}</strong> ({staff.role.toUpperCase()})</p>
+                        <p className="dashboard-copy">Tenant Dashboard · {t('signedInAs')} <strong>{staff.name}</strong> ({staff.role.toUpperCase()})</p>
                     </div>
                     <div style={{ display: "flex", alignItems: "center", gap: "10px", flexWrap: "wrap" }}>
                         <Link href="/onboarding" className="secondary-button" style={{ display: "inline-flex", alignItems: "center", textDecoration: "none", fontWeight: 700 }}>
-                            🚀 Onboarding Hub
+                            {t('onboardingLink')}
                         </Link>
-                        {entitlement.supportTier && <span className="dashboard-badge blue">Support: {entitlement.supportTier}</span>}
+                        {entitlement.supportTier && <span className="dashboard-badge blue">{t('supportBadge', { tier: entitlement.supportTier })}</span>}
                     </div>
                 </header>
                 <section className="dashboard-grid">
-                    <article className="dashboard-card"><h2>Room Status</h2><div className="dashboard-mini-grid"><div className="dashboard-stat mint"><span>Available</span><strong>{rooms.available}</strong></div><div className="dashboard-stat"><span>Occupied</span><strong>{rooms.occupied}</strong></div><div className="dashboard-stat peach"><span>Cleaning</span><strong>{rooms.cleaning}</strong></div><div className="dashboard-stat pink"><span>Maintenance</span><strong>{rooms.maintenance}</strong></div></div><p className="dashboard-copy">{rooms.total} rooms total</p></article>
-                    <article className="dashboard-card"><h2>Bookings Today</h2><div className="dashboard-list"><div className="dashboard-row"><span>Active</span><strong>{bookings.active}</strong></div><div className="dashboard-row"><span>Today Check-ins</span><strong>{bookings.todayCheckIns}</strong></div><div className="dashboard-row"><span>Today Check-outs</span><strong>{bookings.todayCheckOuts}</strong></div></div></article>
-                    <article className="dashboard-card"><h2>Daily Reports</h2><div className="dashboard-list"><div className="dashboard-row"><span>Total today</span><strong>{dailyReports.totalReportsToday}</strong></div><div className="dashboard-row"><span>Delivered (Sent)</span><strong>{dailyReports.deliveredCount}</strong></div><div className="dashboard-row"><span>Failed / Retry</span><strong>{dailyReports.failedCount}</strong></div></div></article>
-                    <article className="dashboard-card"><h2>Plan & Entitlements</h2><div className="dashboard-list"><div className="dashboard-row"><span>Package</span><strong>{entitlement.packageName}</strong></div><div className="dashboard-row"><span>Offer</span><strong>{entitlement.commercialOffer === 'founding_member' ? 'Founding Member' : 'Standard'}</strong></div><div className="dashboard-row"><span>Lifecycle</span><strong>{commercialStatus.lifecycleStatus}</strong></div><div className="dashboard-row"><span>Rooms</span><strong>{commercialStatus.roomUsage} / {entitlement.roomLimit ?? 'Unlimited'}</strong></div><div className="dashboard-row"><span>Pet records</span><strong>{commercialStatus.petUsage} / {entitlement.petHistoryLimit ?? 'Unlimited'}</strong></div>{entitlement.supportTier && <div className="dashboard-row"><span>Support</span><strong>{entitlement.supportTier}</strong></div>}</div></article>
+                    <article className="dashboard-card"><h2>{t('roomStatusHeading')}</h2><div className="dashboard-mini-grid"><div className="dashboard-stat mint"><span>{t('roomStatus.available')}</span><strong>{rooms.available}</strong></div><div className="dashboard-stat"><span>{t('roomStatus.occupied')}</span><strong>{rooms.occupied}</strong></div><div className="dashboard-stat peach"><span>{t('roomStatus.cleaning')}</span><strong>{rooms.cleaning}</strong></div><div className="dashboard-stat pink"><span>{t('roomStatus.maintenance')}</span><strong>{rooms.maintenance}</strong></div></div><p className="dashboard-copy">{t('roomsTotal', { total: rooms.total })}</p></article>
+                    <article className="dashboard-card"><h2>{t('bookingsHeading')}</h2><div className="dashboard-list"><div className="dashboard-row"><span>{t('bookingsActive')}</span><strong>{bookings.active}</strong></div><div className="dashboard-row"><span>{t('bookingsTodayCheckIns')}</span><strong>{bookings.todayCheckIns}</strong></div><div className="dashboard-row"><span>{t('bookingsTodayCheckOuts')}</span><strong>{bookings.todayCheckOuts}</strong></div></div></article>
+                    <article className="dashboard-card"><h2>{t('reportsHeading')}</h2><div className="dashboard-list"><div className="dashboard-row"><span>{t('reportsTotalToday')}</span><strong>{dailyReports.totalReportsToday}</strong></div><div className="dashboard-row"><span>{t('reportsDelivered')}</span><strong>{dailyReports.deliveredCount}</strong></div><div className="dashboard-row"><span>{t('reportsFailed')}</span><strong>{dailyReports.failedCount}</strong></div></div></article>
+                    <article className="dashboard-card"><h2>{t('planHeading')}</h2><div className="dashboard-list"><div className="dashboard-row"><span>{t('planPackage')}</span><strong>{entitlement.packageName}</strong></div><div className="dashboard-row"><span>{t('planOffer')}</span><strong>{entitlement.commercialOffer === 'founding_member' ? t('offerFoundingMember') : t('offerStandard')}</strong></div><div className="dashboard-row"><span>{t('planLifecycle')}</span><strong>{commercialStatus.lifecycleStatus}</strong></div><div className="dashboard-row"><span>{t('planRooms')}</span><strong>{commercialStatus.roomUsage} / {entitlement.roomLimit ?? t('unlimited')}</strong></div><div className="dashboard-row"><span>{t('planPetRecords')}</span><strong>{commercialStatus.petUsage} / {entitlement.petHistoryLimit ?? t('unlimited')}</strong></div>{entitlement.supportTier && <div className="dashboard-row"><span>{t('planSupport')}</span><strong>{entitlement.supportTier}</strong></div>}</div></article>
                 </section>
-                {!commercialStatus.commercialAccess && <section className="dashboard-card" role="alert" style={{ borderColor: '#ef4444' }}><h2>Commercial access blocked</h2><p className="dashboard-copy">ร้านอยู่ในสถานะ <strong>{commercialStatus.lifecycleStatus}</strong> จึงดูข้อมูลสถานะบัญชีได้ แต่การแก้ไขงานธุรกิจถูกระงับ{commercialStatus.blockedReason ? ` (${commercialStatus.blockedReason})` : ''}</p></section>}
-                <section className="dashboard-card"><h2>Subscription lifecycle</h2><div className="dashboard-list"><div className="dashboard-row"><span>Trial ends</span><strong>{formatDate(commercialStatus.trialEndsAt)}</strong></div><div className="dashboard-row"><span>Current period ends</span><strong>{formatDate(commercialStatus.currentPeriodEnd)}</strong></div><div className="dashboard-row"><span>Grace period ends</span><strong>{formatDate(commercialStatus.gracePeriodEnd)}</strong></div><div className="dashboard-row"><span>Founding continuity</span><strong>{entitlement.commercialOffer === 'founding_member' && commercialStatus.foundingMemberContinuityValid ? 'Valid' : 'Not active'}</strong></div></div></section>
-                <section className="dashboard-card"><h2>Active Integrations & Modules</h2><div className="dashboard-integrations"><div className={`integration-card ${integrations.lineLinked ? 'on' : ''}`}><span>LINE Official / LIFF</span><strong>{integrations.lineLinked ? 'Connected' : 'Not Linked'}</strong></div><div className={`integration-card ${integrations.googleSheetsEnabled ? 'on' : ''}`}><span>Google Sheets Sync</span><strong>{integrations.googleSheetsEnabled ? 'Active' : 'Disabled'}</strong></div><div className={`integration-card ${integrations.cameraEnabled ? 'on' : ''}`}><span>Public Visitor Camera</span><strong>{integrations.cameraEnabled ? 'Online' : 'Offline'}</strong></div></div></section>
+                {!commercialStatus.commercialAccess && <section className="dashboard-card" role="alert" style={{ borderColor: '#ef4444' }}><h2>{t('blockedHeading')}</h2><p className="dashboard-copy">{t.rich('blockedBody', { status: commercialStatus.lifecycleStatus, reason: commercialStatus.blockedReason ? ` (${commercialStatus.blockedReason})` : '', strong: (chunks) => <strong>{chunks}</strong> })}</p></section>}
+                <section className="dashboard-card"><h2>{t('lifecycleHeading')}</h2><div className="dashboard-list"><div className="dashboard-row"><span>{t('lifecycleTrialEnds')}</span><strong>{formatDate(commercialStatus.trialEndsAt)}</strong></div><div className="dashboard-row"><span>{t('lifecyclePeriodEnds')}</span><strong>{formatDate(commercialStatus.currentPeriodEnd)}</strong></div><div className="dashboard-row"><span>{t('lifecycleGraceEnds')}</span><strong>{formatDate(commercialStatus.gracePeriodEnd)}</strong></div><div className="dashboard-row"><span>{t('lifecycleFoundingContinuity')}</span><strong>{entitlement.commercialOffer === 'founding_member' && commercialStatus.foundingMemberContinuityValid ? t('continuityValid') : t('continuityNotActive')}</strong></div></div></section>
+                <section className="dashboard-card"><h2>{t('integrationsHeading')}</h2><div className="dashboard-integrations"><div className={`integration-card ${integrations.lineLinked ? 'on' : ''}`}><span>{t('integrationLine')}</span><strong>{integrations.lineLinked ? t('integrationLineOn') : t('integrationLineOff')}</strong></div><div className={`integration-card ${integrations.googleSheetsEnabled ? 'on' : ''}`}><span>{t('integrationSheets')}</span><strong>{integrations.googleSheetsEnabled ? t('integrationSheetsOn') : t('integrationSheetsOff')}</strong></div><div className={`integration-card ${integrations.cameraEnabled ? 'on' : ''}`}><span>{t('integrationCamera')}</span><strong>{integrations.cameraEnabled ? t('integrationCameraOn') : t('integrationCameraOff')}</strong></div></div></section>
             </div>
         </div>
     );

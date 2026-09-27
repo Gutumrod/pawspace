@@ -1,3 +1,6 @@
+import { defaultLocale, isLocale, type Locale } from "../app/i18n/config";
+import { getMessages } from "../app/i18n/messages";
+
 export type IntegrationState = "configured" | "missing_config";
 
 export type IntegrationResult = {
@@ -56,17 +59,26 @@ export async function enqueueSheetSync(payload: SheetSyncPayload): Promise<Integ
   return { ok: false, state: "configured", message: "Sheets transport is intentionally not called from the preview adapter." };
 }
 
-export function buildLineFlexSummary(payload: DailyReportPayload) {
+/**
+ * Builds the LINE flex summary for a Daily Report.
+ *
+ * The text goes to the pet owner through LINE and this module runs server-side, so it cannot
+ * read a browser cookie. `locale` is therefore explicit and optional, defaulting to `'th'`
+ * (the current behaviour) so existing callers keep working. Pass a real locale when the
+ * caller has one.
+ */
+export function buildLineFlexSummary(payload: DailyReportPayload, locale: Locale = defaultLocale) {
+  const catalog = getMessages(isLocale(locale) ? locale : defaultLocale).lineReport;
   return {
     type: "flex",
-    altText: `อัปเดตจาก PawSpace · ${payload.petName}`,
+    altText: `${catalog.updatePrefix} · ${payload.petName}`,
     contents: {
       type: "bubble",
       body: {
         type: "box",
         layout: "vertical",
         contents: [
-          { type: "text", text: "อัปเดตจาก PawSpace", weight: "bold", size: "lg" },
+          { type: "text", text: catalog.flexSummaryTitle, weight: "bold", size: "lg" },
           { type: "text", text: payload.petName, weight: "bold", size: "xl", margin: "md" },
           { type: "text", text: payload.message, wrap: true, margin: "md" },
         ],

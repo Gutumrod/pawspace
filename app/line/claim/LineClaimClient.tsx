@@ -2,6 +2,7 @@
 
 import Script from "next/script";
 import { useRef, useState } from "react";
+import { useTranslations } from "next-intl";
 
 type Props = {
   claimToken: string;
@@ -26,8 +27,9 @@ declare global {
 
 export function LineClaimClient({ claimToken, expectedShopId, liffId }: Props) {
   const started = useRef(false);
+  const t = useTranslations("lineClaim");
   const [state, setState] = useState<ClaimState>("idle");
-  const [message, setMessage] = useState("กำลังเตรียมการยืนยัน LINE…");
+  const [message, setMessage] = useState(t("preparing"));
 
   async function runClaim() {
     if (started.current) return;
@@ -36,7 +38,7 @@ export function LineClaimClient({ claimToken, expectedShopId, liffId }: Props) {
 
     if (!claimToken || !expectedShopId || !liffId || !window.liff) {
       setState("error");
-      setMessage("ลิงก์เชื่อม LINE ไม่สมบูรณ์หรือระบบ LIFF ยังไม่ได้ตั้งค่า");
+      setMessage(t("errorIncompleteLink"));
       return;
     }
 
@@ -50,7 +52,7 @@ export function LineClaimClient({ claimToken, expectedShopId, liffId }: Props) {
       const idToken = window.liff.getIDToken();
       if (!idToken) {
         setState("error");
-        setMessage("ไม่สามารถอ่าน LINE ID token ได้ กรุณาเปิดลิงก์ใหม่จาก LINE");
+        setMessage(t("errorNoIdToken"));
         return;
       }
 
@@ -63,19 +65,15 @@ export function LineClaimClient({ claimToken, expectedShopId, liffId }: Props) {
 
       if (!response.ok || result.success !== true) {
         setState("error");
-        setMessage(
-          result.code === "CLAIM_REJECTED"
-            ? "ลิงก์นี้หมดอายุ ถูกใช้แล้ว หรือไม่ตรงกับร้าน กรุณาขอลิงก์ใหม่"
-            : "ยืนยัน LINE ไม่สำเร็จ กรุณาลองเปิดลิงก์ใหม่",
-        );
+        setMessage(result.code === "CLAIM_REJECTED" ? t("errorRejected") : t("errorFailed"));
         return;
       }
 
       setState("success");
-      setMessage("เชื่อม LINE สำเร็จแล้ว สามารถปิดหน้านี้ได้");
+      setMessage(t("success"));
     } catch {
       setState("error");
-      setMessage("เกิดข้อผิดพลาดระหว่างยืนยัน LINE กรุณาลองใหม่");
+      setMessage(t("errorUnexpected"));
     }
   }
   return (
@@ -86,7 +84,7 @@ export function LineClaimClient({ claimToken, expectedShopId, liffId }: Props) {
         onReady={() => void runClaim()}
         onError={() => {
           setState("error");
-          setMessage("โหลด LINE LIFF SDK ไม่สำเร็จ กรุณาลองใหม่");
+          setMessage(t("errorSdkLoad"));
         }}
       />
       <div

@@ -2,10 +2,15 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { useTranslations } from "next-intl";
 import { loginAction } from "@/app/actions/auth";
+import { LanguageToggle } from "@/app/components/language-toggle";
 
 export default function LoginPage() {
   const router = useRouter();
+  const t = useTranslations("login");
+  const tCommon = useTranslations("common");
+  const tBrand = useTranslations("brand");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
@@ -19,13 +24,13 @@ export default function LoginPage() {
     try {
       const res = await loginAction({ email, password });
       if (!res.success) {
-        setError(res.error || "เข้าสู่ระบบไม่สำเร็จ กรุณาตรวจสอบอีเมลหรือรหัสผ่าน");
+        setError(res.error || t("errorNotAllowed"));
       } else {
         router.push("/");
         router.refresh();
       }
     } catch {
-      setError("เกิดข้อผิดพลาดในการเชื่อมต่อ กรุณาลองใหม่อีกครั้ง");
+      setError(tCommon("connectionError"));
     } finally {
       setLoading(false);
     }
@@ -40,12 +45,15 @@ export default function LoginPage() {
           </div>
           <div>
             <h1 className="login-title">PawSpace</h1>
-            <p className="login-caption">Pet Hotel Operations</p>
+            <p className="login-caption">{tBrand("caption")}</p>
+          </div>
+          <div className="header-actions" style={{ marginLeft: "auto" }}>
+            <LanguageToggle />
           </div>
         </div>
 
-        <h2 className="login-title">เข้าสู่ระบบสำหรับพนักงาน</h2>
-        <p className="login-copy">กรอกอีเมลและรหัสผ่านเพื่อเข้าใช้งานระบบโรงแรมสัตว์เลี้ยง</p>
+        <h2 className="login-title">{t("heading")}</h2>
+        <p className="login-copy">{t("intro")}</p>
 
         {error && (
           <div className="login-error">
@@ -56,7 +64,7 @@ export default function LoginPage() {
         <form onSubmit={handleSubmit} className="login-form">
           <div>
             <label className="login-field" htmlFor="email">
-              อีเมล (Email)
+              {t("emailLabel")}
             </label>
             <input
               id="email"
@@ -71,7 +79,7 @@ export default function LoginPage() {
 
           <div>
             <label className="login-field" htmlFor="password">
-              รหัสผ่าน (Password)
+              {t("passwordLabel")}
             </label>
             <input
               id="password"
@@ -89,7 +97,7 @@ export default function LoginPage() {
             disabled={loading}
             className="primary-button login-submit"
           >
-            {loading ? "กำลังเข้าสู่ระบบ..." : "เข้าสู่ระบบ"}
+            {loading ? t("submitting") : t("submit")}
           </button>
         </form>
       </div>
