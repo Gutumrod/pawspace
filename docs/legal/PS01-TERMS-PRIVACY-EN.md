@@ -23,7 +23,7 @@ To align with the Thai Personal Data Protection Act B.E. 2562 (PDPA):
 
 1.2 **The shop has its own duty towards the pet owner.** The shop must inform the pet owner and/or obtain the pet owner's consent under whichever lawful basis the shop relies on (for example consent, performance of a contract, or legitimate interest) before the shop records the pet owner's data in the system, and before the shop sends the daily report to the pet owner on LINE. WSTERA does not obtain that consent on the shop's behalf and does not take over that duty.
 
-1.3 **WSTERA is the DATA PROCESSOR.** WSTERA processes, stores and passes on data only on the shop's instructions, and does not use the shop's data for its own purposes. The legal entity acting as operator is `[[OWNER INPUT: OI-01]]`.
+1.3 **WSTERA is the DATA PROCESSOR.** WSTERA processes, stores and passes on data only on the shop's instructions, and does not use the shop's data for its own purposes. The service provider is an individual and is not a registered company. The provider’s legal name and legal addresses remain to be supplied: `[[OWNER INPUT: OI-01]]`.
 
 1.4 This document is not a complete data processing agreement (DPA) between the shop and WSTERA. Any DPA is a separate document that must be prepared and approved before production use.
 
@@ -118,9 +118,9 @@ This document describes the system that is actually built in this repository, no
 
 6.1 Data is retained while the shop continues to use the system.
 
-6.2 After the shop stops using the system, the retention period is `[[OWNER INPUT: OI-05]]`.
+6.2 After the shop stops using the system, the data-retention period is 60 days.
 
-6.3 The existing document suggests a value **as a suggestion only**, not an approved value: "when a shop cancels, data in the main system is kept for **30 days** so the shop has time to export its data, after which the system securely deletes it." `[src: docs/TERMS_AND_PRIVACY.md:66]` and the system's target contract states for photos: "photos follow the existing Media Retention Policy (30 days after the end of the contract)." `[src: docs/PRD.md:128]`
+6.3 The previous 30-day proposal is superseded by the Owner’s A-10 decision of 60 days. This value is recorded in this draft; actual deletion capability must still be verified before the text is used with customers.
 
 6.4 The value in this section only becomes real once the system has verifiable deletion, so it must be confirmed before production use rather than merely declared.
 
@@ -134,7 +134,7 @@ This document describes the system that is actually built in this repository, no
 
 7.3 WSTERA, as processor, assists the shop in handling such requests to the extent the system allows and as the shop instructs.
 
-7.4 If WSTERA is to act as an additional coordination channel, an approved channel must be named: `[[OWNER INPUT: OI-02]]`
+7.4 The Owner-approved additional coordination channels are e-mail at `titazmth@gmail.com*` or LINE at `https://lin.ee/WqDbJcl`.
 
 7.5 Informing the pet owner about how their data is used (section 1.2) is the shop's duty, not WSTERA's.
 
@@ -158,7 +158,7 @@ This document describes the system that is actually built in this repository, no
 9.1 **PS01 has no payment collection in the product today.** There is no checkout page, no connected payment provider, and no payment provider key in this codebase.
 `[src: lib/entitlements.ts:2]` (it states "Billing execution and hard quota enforcement are intentionally outside this phase.") and no payment-provider code or dependency was found in this repository — the inspection evidence is in the work note.
 
-9.2 **When payment is enabled**, the payment terms (payment provider, channels, billing timing, automatic renewal, refunds and tax responsibility) will be published in this document and on the checkout page before any real charge is made: `[[OWNER INPUT: OI-09]]`
+9.2 **When payment is enabled**, the payment terms (payment provider, channels, billing timing, automatic renewal, refunds and tax responsibility) will be published in this document and on the checkout page before any real charge is made: `[[OWNER INPUT: OI-09]]`. The first payment for a paid monthly subscription may be refunded within 7 days of that first payment
 
 9.3 **Nothing in this document states that any payment provider is live.** Mentions of Stripe, PromptPay or any other provider elsewhere in the project's documents are not a fact about today's product, and this document makes no such claim.
 
@@ -207,7 +207,7 @@ This document describes the system that is actually built in this repository, no
 
 12.2 This document will change when the system or the Owner's decisions change, and material changes will be notified to shops in advance.
 
-12.3 **The language that prevails if the texts conflict:** `[[OWNER INPUT: OI-08]]` — the project's existing document suggests Thai, because the main market is Thailand, and that is a suggestion only.
+12.3 **The language that prevails if the texts conflict:** Thai.
 
 12.4 The governing law is Thai law, and disputes fall within the jurisdiction of the Thai courts.
 
@@ -215,11 +215,13 @@ This document describes the system that is actually built in this repository, no
 
 ## 13. Contact
 
-13.1 **Contact channel for privacy matters and support:** `[[OWNER INPUT: OI-02]]`
+13.1 **Contact channel for privacy matters and support:** e-mail at `titazmth@gmail.com*` or LINE at `https://lin.ee/WqDbJcl`.
+
+`*` This e-mail address is temporary and may be changed as approved by the Owner.
 
 13.2 **Person responsible for personal data protection:** `[[OWNER INPUT: OI-03]]` — if there is no dedicated person yet, name the contact who performs this role instead.
 
-13.3 Support is provided through written channels only (no live calls or meetings), following the project's launch support principle, and the exact channel must be confirmed: `[[OWNER INPUT: OI-12]]`
+13.3 Support is provided through written channels only (no live calls or meetings) via the e-mail and LINE channels above. Published support hours remain to be confirmed: `[[OWNER INPUT: OI-12]]`.
 
 ---
 

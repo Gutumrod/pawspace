@@ -5,8 +5,8 @@
 
 > Every placeholder in both language files uses the **same single marker**:
 > `[[OWNER INPUT: OI-nn]]`
-> A point that the existing project documents already suggest a value for is written below with
-> that value marked explicitly as **a suggestion only**, not an approved value.
+> Values supplied by Owner in Addendum A-10 are marked as resolved below. Older project suggestions
+> remain suggestions only unless Owner explicitly approved them.
 
 ---
 
@@ -14,29 +14,29 @@
 
 | Marker | Where it appears (TH / EN) | What the Owner must decide | Value already suggested in existing drafts |
 | :--- | :--- | :--- | :--- |
-| `[[OWNER INPUT: OI-01]]` | §1.3 / §1.3 | The WSTERA legal entity name (and legal form/address) that acts as the data processor and service operator | Existing Thai draft says the operator identity is undetermined ("legal entity/operator TBD before production") — no value offered; `docs/TERMS_AND_PRIVACY.md:13` |
-| `[[OWNER INPUT: OI-02]]` | §7.4, §13.1 / §7.4, §13.1 | The approved written contact channel for privacy matters and support (email or LINE) | None in the PS01 draft; the WSTERA-wide draft uses a `[CONTACT]` slot and notes written-only support |
-| `[[OWNER INPUT: OI-03]]` | §13.2 / §13.2 | Who is responsible for personal data protection (a named DPO, or the contact person acting in that role) | None; the WSTERA-wide draft notes that if there is no statutory DPO, name the contact instead |
-| `[[OWNER INPUT: OI-04]]` | §5 table, §5.2 / §5 table, §5.2 | The application hosting provider and its region | **Suggestion only — no provider is named.** The existing draft states it is undetermined: `docs/TERMS_AND_PRIVACY.md:34` ("Hosting provider — TBD … do not assume Vercel by default") |
-| `[[OWNER INPUT: OI-05]]` | §6.2 / §6.2 | The retention period for shop data after the shop stops using the system | **Suggestion only:** 30 days, from `docs/TERMS_AND_PRIVACY.md:66`; photos 30 days after end of contract, from `docs/PRD.md:128` |
-| `[[OWNER INPUT: OI-06]]` | §8.3 / §8.3 | The binding breach-notification timeframe to the shop (currently written as a 24-hour target, not a guarantee) | **Suggestion only:** a 24-hour target, from `docs/TERMS_AND_PRIVACY.md:60` |
-| `[[OWNER INPUT: OI-07]]` | §12.1 / §12.1 | The effective date of the final terms | None; the WSTERA-wide draft uses an `[EFFECTIVE_DATE]` slot |
-| `[[OWNER INPUT: OI-08]]` | §12.3 / §12.3 | Which language prevails if the Thai and English texts conflict | **Suggestion only:** Thai, from the WSTERA-wide draft (`L15-WSTERA-TERMS-PRIVACY-DRAFT-2026-09-26.md:20`), because the main market is Thailand |
-| `[[OWNER INPUT: OI-09]]` | §9.2 / §9.2 | The payment terms to publish when payment is enabled (provider, channels, billing timing, renewal, refunds, tax) | None; PS01 has no payment collection today (`lib/entitlements.ts:2`) and no provider is named or claimed live |
-| `[[OWNER INPUT: OI-10]]` | §10.4 / §10.4 | Confirmation of the published package prices and acceptance that prices are changeable | **Suggestion only:** the Addendum A-2 values already in the repository — Starter 590 THB / 17 USD, Pro 990 THB / 28 USD, Enterprise not for sale, annual not offered (`docs/BUSINESS_MODEL.md:18-24`) |
-| `[[OWNER INPUT: OI-11]]` | §5.1 / §5.1 | Confirmation of sub-processor legal entities, server regions and international transfer terms against the real vendor agreements | None; the existing draft marks every sub-processor entry as pending vendor confirmation |
-| `[[OWNER INPUT: OI-12]]` | §13.3 / §13.3 | The exact support channel and hours | None in the PS01 draft; the project's locked rule L-13 fixes support as written/channel-only (no live calls), stated as a direction rather than a channel |
+| `[[OWNER INPUT: OI-01]]` | §1.3 / §1.3 | The individual provider’s legal name and legal addresses; Owner confirmed the provider is not a registered company | A-10 resolved the legal form only. Name and addresses remain blank; do not invent them. |
+| OI-02 — RESOLVED (A-10) | §7.4, §13.1 / §7.4, §13.1 | Owner-approved written support/privacy contact channels | E-mail `titazmth@gmail.com*` (temporary/configurable) and LINE `https://lin.ee/WqDbJcl`; public drafts show the e-mail without `*`. |
+| `[[OWNER INPUT: OI-03]]` | §13.2 / §13.2 | Who is responsible for personal data protection (a named DPO, or the contact person acting in that role) | No Owner value supplied; remains open. |
+| `[[OWNER INPUT: OI-04]]` | §5 table, §5.2 / §5 table, §5.2 | The application hosting provider and its region | **Suggestion only — no provider is named.** The existing draft states it is undetermined; verify the linked source before launch. |
+| OI-05 — RESOLVED (A-10) | §6.2 / §6.2 | The retention period for shop data after the shop stops using the system | 60 days, from the date the shop stops using the system. Actual deletion capability still needs verification. |
+| `[[OWNER INPUT: OI-06]]` | §8.3 / §8.3 | The binding breach-notification timeframe to the shop (currently written as a 24-hour target, not a guarantee) | **Suggestion only:** a 24-hour target, from the existing project draft. |
+| `[[OWNER INPUT: OI-07]]` | §12.1 / §12.1 | The effective date of the final terms | None; the WSTERA-wide draft uses an `[EFFECTIVE_DATE]` slot. |
+| OI-08 — RESOLVED (A-10) | §12.3 / §12.3 | Which language prevails if the Thai and English texts conflict | Thai prevails. |
+| `[[OWNER INPUT: OI-09]]` | §9.2 / §9.2 | Payment terms when payment is enabled (provider, channels, billing timing, renewal, tax, and other terms) | Refund request for the first monthly subscription payment is allowed within 7 days of that payment. Other payment terms remain open; PS01 currently does not collect payments. |
+| `[[OWNER INPUT: OI-10]]` | §10.4 / §10.4 | Confirmation of the published package prices and acceptance that prices are changeable | Existing package values remain unapproved for this legal draft; see the business model source of truth. |
+| `[[OWNER INPUT: OI-11]]` | §5.1 / §5.1 | Confirmation of sub-processor legal entities, server regions and international transfer terms against the real vendor agreements | None; the draft marks vendor facts pending confirmation. |
+| `[[OWNER INPUT: OI-12]]` | §13.3 / §13.3 | Published support hours | Support channels are resolved by A-10 as e-mail `titazmth@gmail.com*` and LINE `https://lin.ee/WqDbJcl`; hours remain unprovided. |
 
-**Count of distinct placeholders: 12** (OI-01 … OI-12).
+**Open placeholder ids: 9** (OI-01, OI-03, OI-04, OI-06, OI-07, OI-09, OI-10, OI-11, OI-12). OI-02, OI-05 and OI-08 are resolved by Addendum A-10.
 
 **Occurrences by file** (the marker text appears in more than one part of the same document for
 some ids, because the same decision is referenced in more than one clause):
 
 | File | Distinct ids used | Marker occurrences |
 | :--- | :--- | :--- |
-| `docs/legal/PS01-TERMS-PRIVACY-TH.md` | OI-01 … OI-12 (12) | 13 |
-| `docs/legal/PS01-TERMS-PRIVACY-EN.md` | OI-01 … OI-12 (12) | 13 |
-| `docs/legal/PS01-OWNER-INPUTS.md` | OI-01 … OI-12 (12) | 12 |
+| `docs/legal/PS01-TERMS-PRIVACY-TH.md` | 9 open ids | 9 |
+| `docs/legal/PS01-TERMS-PRIVACY-EN.md` | 9 open ids | 9 |
+| `docs/legal/PS01-OWNER-INPUTS.md` | 9 open ids | 9 |
 
 Occurrence counts are verified by command in `docs/house-swarm-5a/WU3-LEGAL-BILINGUAL.md`.
 
@@ -55,7 +55,7 @@ These are not text slots; they are operating decisions the drafts deliberately d
 
 ## 3. How to use this list
 
-1. Fill each `OI-nn` value in this file first, so there is one source of truth per decision.
-2. Replace the matching `[[OWNER INPUT: OI-nn]]` marker in **both** language files with the same decided value, keeping the two files structurally parallel.
+1. Keep this file as the single status record for each Owner decision.
+2. Replace only open `[[OWNER INPUT: OI-nn]]` markers in both language files with the same decided value, keeping the two files structurally parallel.
 3. Do not remove any numbered section; only fill values and adjust wording.
 4. Any value marked **suggestion only** above must be confirmed explicitly; it must not be treated as approved just because it already appears in an earlier draft.
