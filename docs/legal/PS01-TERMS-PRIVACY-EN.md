@@ -23,7 +23,7 @@ To align with the Thai Personal Data Protection Act B.E. 2562 (PDPA):
 
 1.2 **The shop has its own duty towards the pet owner.** The shop must inform the pet owner and/or obtain the pet owner's consent under whichever lawful basis the shop relies on (for example consent, performance of a contract, or legitimate interest) before the shop records the pet owner's data in the system, and before the shop sends the daily report to the pet owner on LINE. WSTERA does not obtain that consent on the shop's behalf and does not take over that duty.
 
-1.3 **WSTERA is the DATA PROCESSOR.** WSTERA processes, stores and passes on data only on the shop's instructions, and does not use the shop's data for its own purposes. The service provider is an individual and is not a registered company. The provider’s legal name and legal addresses remain to be supplied: `[[OWNER INPUT: OI-01]]`.
+1.3 **WSTERA is the DATA PROCESSOR.** WSTERA processes, stores and passes on data only on the shop's instructions, and does not use the shop's data for its own purposes. The service provider is an individual and is not a registered company. Legal name: Mr. Wachiraya Jankhonkan. Contact address: 148/522 Soi Ramkhamhaeng 190, Ramkhamhaeng Road, Min Buri Subdistrict, Min Buri District, Bangkok 10510, Thailand.
 
 1.4 This document is not a complete data processing agreement (DPA) between the shop and WSTERA. Any DPA is a separate document that must be prepared and approved before production use.
 

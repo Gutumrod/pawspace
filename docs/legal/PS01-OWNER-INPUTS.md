@@ -5,7 +5,7 @@
 
 > Every placeholder in both language files uses the **same single marker**:
 > `[[OWNER INPUT: OI-nn]]`
-> Values supplied by Owner in Addendum A-10 are marked as resolved below. Older project suggestions
+> Values supplied by Owner in Addenda A-10, A-14 and A-16 are marked as resolved below. Older project suggestions
 > remain suggestions only unless Owner explicitly approved them.
 
 ---
@@ -14,7 +14,7 @@
 
 | Marker | Where it appears (TH / EN) | What the Owner must decide | Value already suggested in existing drafts |
 | :--- | :--- | :--- | :--- |
-| `[[OWNER INPUT: OI-01]]` | §1.3 / §1.3 | The individual provider’s legal name and legal addresses; Owner confirmed the provider is not a registered company | A-10 resolved the legal form only. Name and addresses remain blank; do not invent them. |
+| OI-01 — RESOLVED (A-14/A-16) | §1.3 / §1.3 | The individual provider’s legal name and contact address; Owner confirmed the provider is not a registered company | Legal name: `นาย วชิรญาณ์ จันทร์ขอนแก่น` / `Mr. Wachiraya Jankhonkan`; contact address: `148/522 ซอยรามคำแหง 190 ถนนรามคำแหง แขวงมีนบุรี เขตมีนบุรี กรุงเทพมหานคร 10510` / `148/522 Soi Ramkhamhaeng 190, Ramkhamhaeng Road, Min Buri Subdistrict, Min Buri District, Bangkok 10510, Thailand`. |
 | OI-02 — RESOLVED (A-10) | §7.4, §13.1 / §7.4, §13.1 | Owner-approved written support/privacy contact channels | E-mail `titazmth@gmail.com*` (temporary/configurable) and LINE `https://lin.ee/WqDbJcl`; public drafts show the e-mail without `*`. |
 | `[[OWNER INPUT: OI-03]]` | §13.2 / §13.2 | Who is responsible for personal data protection (a named DPO, or the contact person acting in that role) | No Owner value supplied; remains open. |
 | `[[OWNER INPUT: OI-04]]` | §5 table, §5.2 / §5 table, §5.2 | The application hosting provider and its region | **Suggestion only — no provider is named.** The existing draft states it is undetermined; verify the linked source before launch. |
@@ -27,16 +27,16 @@
 | `[[OWNER INPUT: OI-11]]` | §5.1 / §5.1 | Confirmation of sub-processor legal entities, server regions and international transfer terms against the real vendor agreements | None; the draft marks vendor facts pending confirmation. |
 | `[[OWNER INPUT: OI-12]]` | §13.3 / §13.3 | Published support hours | Support channels are resolved by A-10 as e-mail `titazmth@gmail.com*` and LINE `https://lin.ee/WqDbJcl`; hours remain unprovided. |
 
-**Open placeholder ids: 9** (OI-01, OI-03, OI-04, OI-06, OI-07, OI-09, OI-10, OI-11, OI-12). OI-02, OI-05 and OI-08 are resolved by Addendum A-10.
+**Open placeholder ids: 8** (OI-03, OI-04, OI-06, OI-07, OI-09, OI-10, OI-11, OI-12). OI-01 is resolved by Addendum A-14/A-16; OI-02, OI-05 and OI-08 are resolved by Addendum A-10.
 
 **Occurrences by file** (the marker text appears in more than one part of the same document for
 some ids, because the same decision is referenced in more than one clause):
 
 | File | Distinct ids used | Marker occurrences |
 | :--- | :--- | :--- |
-| `docs/legal/PS01-TERMS-PRIVACY-TH.md` | 9 open ids | 9 |
-| `docs/legal/PS01-TERMS-PRIVACY-EN.md` | 9 open ids | 9 |
-| `docs/legal/PS01-OWNER-INPUTS.md` | 9 open ids | 9 |
+| `docs/legal/PS01-TERMS-PRIVACY-TH.md` | 8 open ids | 8 |
+| `docs/legal/PS01-TERMS-PRIVACY-EN.md` | 8 open ids | 8 |
+| `docs/legal/PS01-OWNER-INPUTS.md` | 8 open ids | 8 |
 
 Occurrence counts are verified by command in `docs/house-swarm-5a/WU3-LEGAL-BILINGUAL.md`.
 
